@@ -1,14 +1,31 @@
 {
   "name": "flx",
-  "displayName": "flx",
+  "displayName": "flx — Flutter DSL",
   "description": "Language support for .flx — syntax highlighting, diagnostics, completion, hover and go-to-definition",
   "version": "0.2.0",
   "publisher": "SonalSithara",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#0F1629",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sonal-sithara/flx.git",
+    "directory": "tools/vscode-flx"
+  },
   "engines": {
     "vscode": "^1.82.0"
   },
   "categories": [
     "Programming Languages"
+  ],
+  "keywords": [
+    "flutter",
+    "dart",
+    "dsl",
+    "ui",
+    "compose"
   ],
   "main": "./client/extension.js",
   "activationEvents": [
@@ -26,7 +43,11 @@
         "extensions": [
           ".flx"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/flx-file.png",
+          "dark": "./icons/flx-file.png"
+        }
       }
     ],
     "grammars": [
