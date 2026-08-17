@@ -1,0 +1,51 @@
+// Constructs that used to be impossible, or silently produced broken Dart.
+// This file exists to compile.
+import "package:flutter/services.dart" as services
+
+// Top-level Dart beside the screen it serves, rather than exiled to a .dart.
+enum Mode { light, dark }
+
+String labelOf(Mode mode) => mode == Mode.light ? "Light" : "Dark";
+
+// A generic component, with a function type as a parameter type.
+composable Box<T>(item: T, render: String Function(T)) {
+  Text(render(item))
+}
+
+@page("/kitchen")
+composable KitchenSink {
+  val mode: Mode = Mode.light
+  val controller = useScrollController()
+  val text       = useTextField()
+  services.HapticFeedback.selectionClick();
+
+  Screen(title: "Kitchen sink", scrollable: true) {
+    // const constructors
+    const Text("a const child")
+
+    // generics at the call site
+    Box<Mode>(item: mode, render: labelOf)
+
+    // core Flutter builder
+    LayoutBuilder { context, box =>
+      Text("width ${box.maxWidth.round()}")
+    }
+
+    // a typed lambda parameter
+    Field(controller: text, label: "Name", onSubmitted: { String value ->
+      controller.jumpTo(0);
+    })
+
+    // an async callback — `async` is inferred from `await`
+    Button("Reload") {
+      await Future<void>.delayed(Duration.zero);
+      controller.jumpTo(0);
+    }
+
+    // a switch expression as a child
+    (switch (mode) { Mode.light => Text("light"), Mode.dark => Text("dark") })
+
+    // a bare reference to a widget value
+    (const SizedBox(height: 8))
+  }
+}

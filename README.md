@@ -41,7 +41,7 @@ make setup     # fetch deps for all four packages
 make build     # .flx -> .dart, and regenerate routes.g.dart
 make run       # build, then launch Ledger
 make watch     # rebuild on every save
-make test      # 309 tests across compiler, server, runtime and apps
+make test      # 325 tests across compiler, server, runtime and apps
 ```
 
 ## The compiler
@@ -236,6 +236,41 @@ LazyColumn<Todo>(items: todos) { todo in Text(todo.title) }
 ...extraRows
 ```
 
+## The rest of the language
+
+```
+import "package:flutter/services.dart" as services   // prefixes, show, hide
+
+enum Mode { light, dark }                            // top-level Dart lives
+String labelOf(Mode m) => m.name;                    // beside its screen
+
+composable Box<T>(item: T, render: String Function(T)) {   // generics, and
+  Text(render(item))                                       // function types
+}
+
+@page("/kitchen")
+composable KitchenSink {
+  val mode: Mode = Mode.light        // typed bindings
+  val controller = useScrollController()
+  controller.jumpTo(0);              // statements, terminated with ;
+
+  Column(gap: 8) {
+    const Text("a const child")      // const constructors
+    header                           // a bare name is a reference, not a call
+
+    Field(controller: text, onSubmitted: { String value ->   // typed params
+      controller.jumpTo(0);
+    })
+
+    Button("Reload") {
+      await reload()                 // `async` is inferred from `await`
+    }
+
+    (switch (mode) { Mode.light => Text("light"), _ => Text("dark") })
+  }
+}
+```
+
 | Architecture | How it fits |
 | --- | --- |
 | **Clean / layered** | Native — Ledger *is* this |
@@ -255,6 +290,12 @@ LazyColumn<Todo>(items: todos) { todo in Text(todo.title) }
   is handed to Dart verbatim — Dart remains the type checker.
 - **One root widget per composable**, and `if`/`for` cannot be that root. Wrap
   them, or use `(a ? B() : C())`.
+- **Statements end with `;`.** That is what separates them from a widget, and
+  the error says so when one is missing.
+- **`switch` and `if` are statements in Dart**, so they cannot be children or
+  argument values directly. A switch *expression* works parenthesised; use a
+  ternary for a conditional value. Both are compile errors with the fix in the
+  message, rather than broken generated code.
 - **Riverpod's `ConsumerWidget`** cannot be a composable's base class.
 - **No rename, code actions or formatting** in the language server, and no
   member completion inside `${...}` — that needs Dart type information the
@@ -285,7 +326,7 @@ Setup is in [tools/vscode-flx](tools/vscode-flx).
 
 ## Status
 
-Production-solid for in-house use: 309 tests, a language server, real
+Production-solid for in-house use: 325 tests, a language server, real
 diagnostics that land on the line you wrote, watch mode, and
 [Ledger](apps/ledger) — a complete expense tracker written entirely in the DSL,
 building for web, iOS, Android and macOS.

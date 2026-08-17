@@ -6,10 +6,17 @@ class FlxFile {
     required this.source,
     required this.imports,
     required this.composables,
+    this.declarations = const [],
   });
 
   final Source source;
   final List<ImportDecl> imports;
+
+  /// Raw Dart declared at the top level of the `.flx` — enums, helper
+  /// functions, private classes, extensions. Emitted verbatim above the
+  /// composables, so a screen's helpers can live beside it instead of being
+  /// exiled to a separate file.
+  final List<String> declarations;
 
   /// A file may declare several composables: one screen plus the small
   /// components it is built from. Only those with a [ComposableDecl.route]
@@ -18,16 +25,20 @@ class FlxFile {
 }
 
 class ImportDecl {
-  ImportDecl(this.rawUri, this.span);
+  ImportDecl(this.rawUri, this.span, {this.suffix = ''});
 
   /// The literal as written, quotes included: `"../data/user_repository.dart"`.
   final String rawUri;
   final Span span;
 
-  /// Normalised to Dart's single-quote convention.
-  String get dartLiteral {
+  /// Everything after the URI: `as m`, `show Button`, `hide Provider`.
+  /// Needed the moment two packages export the same name.
+  final String suffix;
+
+  /// The full Dart directive, normalised to single quotes.
+  String get dartDirective {
     final inner = rawUri.substring(1, rawUri.length - 1);
-    return "'$inner'";
+    return suffix.isEmpty ? "'$inner'" : "'$inner' $suffix";
   }
 }
 
@@ -59,9 +70,18 @@ class Param {
 }
 
 class ValDecl {
-  ValDecl(this.name, this.expr, this.span, this.references);
+  ValDecl(
+    this.name,
+    this.expr,
+    this.span,
+    this.references, {
+    this.type,
+  });
 
   final String name;
+
+  /// An explicit annotation: `val count: int = 5`. Null means inferred.
+  final String? type;
 
   /// The right-hand side, already serialized to Dart.
   final String expr;
@@ -90,6 +110,8 @@ class WidgetNode implements Node {
     required this.name,
     required this.args,
     required this.span,
+    this.isConst = false,
+    this.isReference = false,
     this.children,
     this.callback,
     this.callbackSpan,
@@ -103,6 +125,13 @@ class WidgetNode implements Node {
 
   @override
   final Span span;
+
+  /// `const Text("hi")` — emitted as a const constructor call.
+  final bool isConst;
+
+  /// True when the child is a bare reference to an existing widget value
+  /// (`header`) rather than a constructor call (`Header()`).
+  final bool isReference;
 
   /// Present for layout and builder widgets with a `{ ... }` block.
   final List<Node>? children;
@@ -252,11 +281,21 @@ class ComposableDecl {
     required this.root,
     required this.span,
     this.route,
+    this.typeParams = '',
+    this.statements = const [],
   });
 
   final String name;
+
+  /// `<T>` / `<T extends Object>` — carried through to the generated class so
+  /// components can be generic.
+  final String typeParams;
+
   final List<Param> params;
   final List<ValDecl> vals;
+
+  /// Raw Dart statements between the bindings and the widget tree.
+  final List<String> statements;
   final Node root;
   final Span span;
 

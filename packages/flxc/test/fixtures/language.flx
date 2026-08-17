@@ -1,0 +1,40 @@
+// Language constructs that must never silently produce broken Dart.
+import "package:flutter/services.dart" as services
+import "../data/models.dart" show Mode hide Internal
+
+enum Tone { quiet, loud }
+
+String describe(Tone tone) => tone == Tone.loud ? "loud" : "quiet";
+
+composable Box<T>(item: T, render: String Function(T)) {
+  Text(render(item))
+}
+
+@page("/language")
+composable LanguageScreen(id) {
+  val tone: Tone = Tone.quiet
+  val vm         = useViewModel<Model>()
+  val header     = Text("a widget in a binding")
+  vm.warmUp();
+
+  Column(gap: 8) {
+    const Text("const child")
+    header
+    Box<Tone>(item: tone, render: describe)
+
+    LayoutBuilder { context, box =>
+      Text("${box.maxWidth}")
+    }
+
+    Field(controller: vm.query, onSubmitted: { String value ->
+      vm.search(value);
+    })
+
+    Button("Save") {
+      await vm.save()
+    }
+
+    (switch (tone) { Tone.loud => Text("loud"), _ => Text("quiet") })
+    ...vm.extras
+  }
+}

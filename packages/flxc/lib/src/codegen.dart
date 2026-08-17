@@ -97,7 +97,13 @@ class CodeGenerator {
       ..writeln()
       ..writeln("import '$runtimeImport';");
     for (final imp in file.imports) {
-      buf.writeln('import ${imp.dartLiteral};');
+      buf.writeln('import ${imp.dartDirective};');
+    }
+
+    for (final declaration in file.declarations) {
+      buf
+        ..writeln()
+        ..writeln(declaration);
     }
 
     for (final c in file.composables) {
@@ -137,7 +143,7 @@ class CodeGenerator {
     final buf = StringBuffer();
 
     if (c.isPage) buf.writeln("@page('${c.route}')");
-    buf.writeln('class ${c.name} extends Composable {');
+    buf.writeln('class ${c.name}${c.typeParams} extends Composable {');
 
     // Constructor
     if (c.params.isEmpty) {
@@ -169,10 +175,14 @@ class CodeGenerator {
         // value bound by the `.when(data:)` closure below.
         buf.writeln('${_pad(2)}final ${v.name}\$ = ${v.expr};');
       } else {
-        buf.writeln('${_pad(2)}final ${v.name} = ${v.expr};');
+        final declared = v.type == null ? 'final' : 'final ${v.type}';
+        buf.writeln('${_pad(2)}$declared ${v.name} = ${v.expr};');
       }
     }
-    if (c.vals.isNotEmpty) buf.writeln();
+    for (final statement in c.statements) {
+      buf.writeln('${_pad(2)}$statement');
+    }
+    if (c.vals.isNotEmpty || c.statements.isNotEmpty) buf.writeln();
 
     // A root that already provides a Scaffold (Screen, or a hand-written
     // Scaffold) must not get a second one wrapped around it.
@@ -246,6 +256,10 @@ class CodeGenerator {
       };
 
   String _widget(WidgetNode w, int depth) {
+    // A bare name refers to a widget that already exists; calling it would
+    // be wrong.
+    if (w.isReference) return w.name;
+
     final base = baseNameOf(w.name);
     if (layoutWidgets.containsKey(base)) return _layout(w, depth);
     if (containerWidgets.contains(base)) return _container(w, depth);
@@ -262,12 +276,13 @@ class CodeGenerator {
     // An argument holding a widget tree spans several lines, and packing the
     // rest onto the same line makes the result unreadable. Generated code is
     // meant to be read, so wrap.
+    final prefix = w.isConst ? 'const ' : '';
     if (_hasNestedTree(w)) {
-      return '${w.name}(\n'
+      return '$prefix${w.name}(\n'
           '${_pad(depth + 1)}${args.join(',\n${_pad(depth + 1)}')},\n'
           '${_pad(depth)})${split.modifiers.join()}';
     }
-    return '${w.name}(${args.join(', ')})${split.modifiers.join()}';
+    return '$prefix${w.name}(${args.join(', ')})${split.modifiers.join()}';
   }
 
   /// True when any argument contains a widget tree or a widget-returning
@@ -505,7 +520,11 @@ class CodeGenerator {
   /// Callback bodies are raw Dart. Re-indent them to sit correctly in the
   /// generated file and add the semicolons the DSL lets you omit.
   String _callback(String raw, List<String> params, int depth) {
-    final signature = '(${params.join(', ')})';
+    // A body that awaits has to be async. Requiring the author to say so
+    // twice would be noise, and forgetting it produces a Dart error inside
+    // generated code.
+    final isAsync = RegExp(r'(?<![\w$])await(?![\w$])').hasMatch(raw);
+    final signature = '(${params.join(', ')})${isAsync ? ' async' : ''}';
     final pad = _pad(depth + 1);
     final lines = raw
         .split('\n')

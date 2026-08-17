@@ -19,7 +19,13 @@ This is the first question to ask of any change: *does this make something
 impossible?* If yes, the design is wrong, however tidy it looks.
 
 It has been violated before, and the failure mode is always the same: a
-hardcoded table of known widget names. Argument values were once captured as
+hardcoded table of known widget names, or a capture that reads tokens without
+understanding where they end. Both produce **silently wrong output**, which is
+worse than a rejection — `const Text("x")` once emitted `const()`, and a
+statement after a binding was absorbed into it.
+
+Audit by compiling, not by reading. Write the construct, transpile it, and run
+the analyzer over the result; a probe that merely transpiles proves nothing. Argument values were once captured as
 flat token runs, which silently made every builder-shaped widget — including
 Flutter's own `LayoutBuilder` — impossible to write. Generality has to be
 designed in; it never emerges from a longer table.
@@ -60,7 +66,7 @@ hand-edited.
 ```bash
 make build      # transpile all .flx + generate routes.g.dart
 make watch      # rebuild Ledger's pages on save
-make test       # 309 tests: compiler goldens, server, runtime, app
+make test       # 325 tests: compiler goldens, server, runtime, apps
 make ci         # analyze + build + stale-codegen check + test
 make run        # launch Ledger
 ```

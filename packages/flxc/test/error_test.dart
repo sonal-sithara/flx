@@ -260,6 +260,122 @@ void main() {
     });
   });
 
+  group('constructs that used to fail silently', () {
+    test('`switch` as a child names the expression form', () {
+      expectError(
+        'composable A {\n  Column {\n    switch (m) { case 1: Text("x") }\n  }\n}\n',
+        message: contains('`switch` is a statement'),
+        hint: contains('parenthesise it'),
+      );
+    });
+
+    test('`if` as an argument value is rejected', () {
+      // Dart has no if-expression; this once emitted code that could not
+      // compile, with no warning.
+      expectError(
+        'composable A {\n  Text(if (flag) "yes" else "no")\n}\n',
+        message: '`if` is not an expression in Dart',
+        hint: contains('flag ? "yes" : "no"'),
+      );
+    });
+
+    test('two @page routes on one composable', () {
+      // The second silently replaced the first.
+      expectError(
+        '@page("/a")\n@page("/b")\ncomposable A {\n  Text("hi")\n}\n',
+        message: 'a composable can only have one @page route',
+        line: 2,
+        hint: contains('silently replaced'),
+      );
+    });
+
+    test('a statement without a semicolon is diagnosed as such', () {
+      expectError(
+        'composable A {\n  val vm = useViewModel<V>()\n  vm.warmUp()\n'
+        '  Text("hi")\n}\n',
+        message: contains('more than one root widget'),
+        hint: contains("statements end with ';'"),
+      );
+    });
+  });
+
+  group('constructs that must work', () {
+    String compile(String src) =>
+        compiler.compileSource(Source('test.flx', src));
+
+    test('a binding ends at its line, so the next statement survives', () {
+      final dart = compile(
+        'composable A {\n  val vm = useViewModel<V>()\n  vm.warmUp();\n'
+        '  Text("hi")\n}\n',
+      );
+      expect(dart, contains('final vm = useViewModel<V>();'));
+      expect(dart, contains('vm.warmUp();'));
+    });
+
+    test('a wrapped expression is still one binding', () {
+      final dart = compile(
+        'composable A {\n  val total = items\n      .map(size)\n'
+        '      .fold(0, add)\n  Text("hi")\n}\n',
+      );
+      expect(dart, contains('final total = items.map(size).fold(0, add);'));
+    });
+
+    test('await makes a callback async', () {
+      final dart = compile(
+        'composable A {\n  Button("go") {\n    await vm.save()\n  }\n}\n',
+      );
+      expect(dart, contains('() async {'));
+    });
+
+    test('const children, bare references and typed bindings', () {
+      final dart = compile(
+        'composable A {\n  val header: Widget = Text("h")\n  Column {\n'
+        '    const Text("c")\n    header\n  }\n}\n',
+      );
+      expect(dart, contains('final Widget header = Text("h");'));
+      expect(dart, contains('const Text("c")'));
+      expect(dart, contains('      header,'),
+          reason: 'a bare name is a reference, not a call');
+    });
+
+    test('generic composables and function-type parameters', () {
+      final dart = compile(
+        'composable Box<T>(item: T, render: String Function(T)) {\n'
+        '  Text(render(item))\n}\n',
+      );
+      expect(dart, contains('class Box<T> extends Composable'));
+      expect(dart, contains('final String Function(T) render;'));
+    });
+
+    test('import prefixes and combinators survive', () {
+      final dart = compile(
+        'import "package:a/a.dart" as a\n'
+        'import "package:b/b.dart" show One hide Two\n'
+        'composable A {\n  Text("hi")\n}\n',
+      );
+      expect(dart, contains("import 'package:a/a.dart' as a;"));
+      expect(dart, contains("import 'package:b/b.dart' show One hide Two;"));
+    });
+
+    test('top-level Dart is emitted verbatim, before the composables', () {
+      final dart = compile(
+        'enum Mode { light, dark }\n\n'
+        'int twice(int x) => x * 2;\n\n'
+        'composable A {\n  Text("hi")\n}\n',
+      );
+      expect(dart, contains('enum Mode { light, dark }'));
+      expect(dart, contains('int twice(int x) => x * 2;'));
+      expect(dart.indexOf('enum Mode'), lessThan(dart.indexOf('class A')));
+    });
+
+    test('typed lambda parameters', () {
+      final dart = compile(
+        'composable A {\n  Thing(onPick: { String v -> vm.set(v); })\n}\n',
+      );
+      expect(dart, contains('onPick: (String v) {'));
+    });
+  });
+
   group('codegen', () {
     test('unknown shorthand type', () {
       expectError(

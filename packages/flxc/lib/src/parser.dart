@@ -99,12 +99,38 @@ class Parser {
         );
       }
       final uri = _advance();
-      imports.add(ImportDecl(uri.lexeme, _spanFrom(kw)));
+
+      // `as m`, `show A, B`, `hide Provider` — needed as soon as two packages
+      // export the same name, which is not a rare event.
+      //
+      // Bounded to the line the URI is on. Scanning ahead to the next
+      // `composable` instead swallowed any top-level Dart that followed.
+      final line = source.lineAt(uri.span.start);
+      final suffix = <Token>[];
+      while (!_current.isEof &&
+          source.lineAt(_current.span.start) == line) {
+        if (_check(';')) {
+          _advance();
+          break;
+        }
+        suffix.add(_advance());
+      }
+
+      imports.add(ImportDecl(
+        uri.lexeme,
+        _spanFrom(kw),
+        suffix: suffix.isEmpty ? '' : serialize(suffix),
+      ));
     }
 
     final composables = <ComposableDecl>[];
+    final declarations = <String>[];
     while (!_current.isEof) {
-      composables.add(_parseComposable());
+      if (_check('@') || _current.isIdent('composable')) {
+        composables.add(_parseComposable());
+      } else {
+        declarations.add(_parseTopLevelDart());
+      }
     }
 
     if (composables.isEmpty) {
@@ -118,6 +144,78 @@ class Parser {
       source: source,
       imports: imports,
       composables: composables,
+      declarations: declarations,
+    );
+  }
+
+  /// Captures a top-level Dart declaration verbatim: an enum, a helper
+  /// function, a private class, an extension.
+  ///
+  /// A screen's helpers belong beside it, not exiled to a separate `.dart`
+  /// because the DSL had no syntax for them. flxc does not need to understand
+  /// these — only to know where they end, which is the first `;` or `}` at
+  /// brace depth zero followed by a composable or the end of the file.
+  String _parseTopLevelDart() {
+    final start = _current;
+    var depth = 0;
+
+    while (!_current.isEof) {
+      final token = _advance();
+      if (token.lexeme == '{') depth++;
+      if (token.lexeme == '}') depth--;
+
+      final ends = depth <= 0 && (token.lexeme == ';' || token.lexeme == '}');
+      if (!ends) continue;
+      if (_current.isEof ||
+          _check('@') ||
+          _current.isIdent('composable') ||
+          _current.isIdent('import')) {
+        return source.text.substring(start.span.start, token.span.end);
+      }
+    }
+
+    throw FlxError(
+      'unterminated declaration',
+      start.span,
+      hint: 'top-level Dart in a .flx file must end with `;` or `}` before '
+          'the next composable',
+    );
+  }
+
+  /// True when a plain Dart statement starts here: a `;` is reached at depth
+  /// zero before any block opens.
+  bool _statementAhead() {
+    var depth = 0;
+    for (var i = _pos; i < _tokens.length; i++) {
+      final lexeme = _tokens[i].lexeme;
+      if (lexeme == '(' || lexeme == '[') {
+        depth++;
+      } else if (lexeme == ')' || lexeme == ']') {
+        depth--;
+      } else if (depth == 0) {
+        if (lexeme == '{' || lexeme == '}') return false;
+        if (lexeme == ';') return true;
+      }
+    }
+    return false;
+  }
+
+  String _parseStatement() {
+    final start = _current;
+    var depth = 0;
+    while (!_current.isEof) {
+      final token = _advance();
+      final lexeme = token.lexeme;
+      if (lexeme == '(' || lexeme == '[' || lexeme == '{') depth++;
+      if (lexeme == ')' || lexeme == ']' || lexeme == '}') depth--;
+      if (depth == 0 && lexeme == ';') {
+        return source.text.substring(start.span.start, token.span.end);
+      }
+    }
+    throw FlxError(
+      'unterminated statement',
+      start.span,
+      hint: "end it with ';'",
     );
   }
 
@@ -139,6 +237,14 @@ class Parser {
       final arg = _advance();
       _expect(')', context: 'to close @${name.lexeme}(...)');
 
+      if (name.lexeme == 'page' && route != null) {
+        throw FlxError(
+          'a composable can only have one @page route',
+          name.span,
+          hint: 'the second one silently replaced the first — split this into '
+              'two composables, or route one to the other',
+        );
+      }
       if (name.lexeme != 'page') {
         throw FlxError(
           "unknown annotation '@${name.lexeme}'",
@@ -178,14 +284,42 @@ class Parser {
       );
     }
 
+    // `composable Box<T>(item: T)` — components should be as generic as the
+    // widgets they wrap.
+    var typeParams = '';
+    if (_check('<')) {
+      final buffer = StringBuffer();
+      var depth = 0;
+      do {
+        final token = _advance();
+        if (token.lexeme == '<') depth++;
+        if (token.lexeme == '>') depth--;
+        buffer.write(token.lexeme);
+        if (token.lexeme == ',') buffer.write(' ');
+      } while (depth > 0 && !_current.isEof);
+      typeParams = buffer.toString();
+    }
+
     final params = _check('(') ? _parseParams() : <Param>[];
     _validateRouteParams(route, params, nameTok.span);
 
     _expect('{', context: 'to open the body of $name');
 
     final vals = <ValDecl>[];
-    while (_current.isIdent('val')) {
-      vals.add(_parseVal());
+    final statements = <String>[];
+    while (true) {
+      if (_current.isIdent('val')) {
+        vals.add(_parseVal());
+        continue;
+      }
+      // A plain Dart statement, recognised by reaching `;` at depth zero
+      // before any block opens. Without this the tokens were swallowed into
+      // the preceding val and produced unparseable Dart, silently.
+      if (_statementAhead()) {
+        statements.add(_parseStatement());
+        continue;
+      }
+      break;
     }
 
     if (_check('}')) {
@@ -207,18 +341,30 @@ class Parser {
           hint: 'move this val above the root widget of $name',
         );
       }
+      // A lowercase root is almost always a statement someone forgot to
+      // terminate, not a widget. Saying "wrap them in a Column" there sends
+      // the reader in exactly the wrong direction.
+      final looksLikeStatement =
+          root is WidgetNode && !_startsWidget(nameOf: root.name);
+
       throw FlxError(
         "composable '$name' has more than one root widget",
         _current.span,
-        hint: 'wrap them in a single Column { ... } or Row { ... }',
+        hint: looksLikeStatement
+            ? '`${root.name}(...)` looks like a statement rather than a '
+                "widget — statements end with ';', and must come before the "
+                'widget tree'
+            : 'wrap them in a single Column { ... } or Row { ... }',
       );
     }
     _expect('}', context: 'to close $name');
 
     final decl = ComposableDecl(
       name: name,
+      typeParams: typeParams,
       params: params,
       vals: vals,
+      statements: statements,
       root: root,
       route: route,
       span: _spanFrom(start),
@@ -316,15 +462,20 @@ class Parser {
     return params;
   }
 
-  /// Captures a type annotation: `int`, `List<Todo>`, `String?`.
+  /// Captures a type annotation: `int`, `List<Todo>`, `String?`,
+  /// `void Function(String)`.
+  ///
+  /// Parentheses count toward the depth as well as angle brackets — a
+  /// function type is the ordinary way to declare a callback parameter, and
+  /// tracking only `<>` cut it off at its own argument list.
   List<Token> _captureType() {
     final out = <Token>[];
     var depth = 0;
     while (!_current.isEof) {
       final lex = _current.lexeme;
       if (depth == 0 && (lex == ',' || lex == ')' || lex == '=')) break;
-      if (lex == '<') depth++;
-      if (lex == '>') depth--;
+      if (lex == '<' || lex == '(' || lex == '[') depth++;
+      if (lex == '>' || lex == ')' || lex == ']') depth--;
       out.add(_advance());
     }
     if (out.isEmpty) {
@@ -339,6 +490,12 @@ class Parser {
       'a name after `val`',
       hint: 'declarations look like:  val count = useState(0)',
     );
+
+    String? type;
+    if (_match(':')) {
+      type = serialize(_captureType());
+    }
+
     _expect('=',
         context: 'after `val ${nameTok.lexeme}`',
         hint: 'flx vals are always initialised: '
@@ -360,6 +517,7 @@ class Parser {
       serialize(tokens),
       _spanFrom(kw),
       references,
+      type: type,
     );
   }
 
@@ -376,11 +534,24 @@ class Parser {
       if (depth == 0) {
         if (lex == '}') break;
         if (_current.isIdent('val')) break;
+
+        // A binding ends at the end of its line. Without this a following
+        // statement was silently absorbed into the expression, producing
+        // `final vm = useViewModel<V>() vm.warmUp();` — unparseable Dart, and
+        // no error. Continuation lines are still joined, and anything inside
+        // brackets is exempt because depth is non-zero there.
+        if (out.isNotEmpty &&
+            source.lineAt(out.last.span.end) <
+                source.lineAt(_current.span.start) &&
+            !_isContinuation(out.last) &&
+            !_continuesLine(_current)) {
+          break;
+        }
         // A capitalised identifier at depth 0 that is not a continuation
         // (`.`/`(` before it) starts the widget tree.
         if (out.isNotEmpty &&
             _current.type == TokenType.identifier &&
-            _startsWidget(_current) &&
+            _startsWidget(token: _current) &&
             !_isContinuation(out.last)) {
           break;
         }
@@ -392,10 +563,19 @@ class Parser {
     return out;
   }
 
-  static bool _startsWidget(Token t) {
-    final c = t.lexeme[0];
+  static bool _startsWidget({Token? token, String? nameOf}) {
+    final lexeme = nameOf ?? token!.lexeme;
+    if (lexeme.isEmpty) return false;
+    final c = lexeme[0];
     return c.toUpperCase() == c && c.toLowerCase() != c;
   }
+
+  /// True when [t] opening a line means it continues the previous one, as in
+  /// a wrapped method chain.
+  static bool _continuesLine(Token t) => const {
+        '.', '?.', '..', ')', ']', '}', ',', '=>', '+', '-', '*', '/', '??',
+        '&&', '||', '==', '!=', '<', '>', '<=', '>=', '?', ':',
+      }.contains(t.lexeme);
 
   /// True when [t] means the expression is mid-flight and the next token
   /// cannot be the start of the widget tree.
@@ -500,7 +680,35 @@ class Parser {
     return buffer.toString();
   }
 
+  /// Dart statements that are not expressions, so they cannot be a child.
+  static const _statementKeywords = {
+    'switch', 'while', 'do', 'try', 'return', 'throw', 'break', 'continue',
+  };
+
   WidgetNode _parseWidget() {
+    // `const Text("hi")` — a const constructor call, not a widget named
+    // `const`.
+    var isConst = false;
+    if (_current.isIdent('const') &&
+        _peek(1).type == TokenType.identifier) {
+      _advance();
+      isConst = true;
+    }
+
+    if (_current.type == TokenType.identifier &&
+        _statementKeywords.contains(_current.lexeme)) {
+      throw FlxError(
+        '`${_current.lexeme}` is a statement, and a child must be an '
+        'expression',
+        _current.span,
+        hint: _current.lexeme == 'switch'
+            ? 'a switch *expression* works if you parenthesise it: '
+                '(switch (x) { 1 => Text("a"), _ => Text("b") })'
+            : 'wrap the logic in a `val`, or use `if` / `for`, which the DSL '
+                'understands directly',
+      );
+    }
+
     if (_current.type != TokenType.identifier) {
       throw FlxError(
         'expected a widget but found ${_current.describe}',
@@ -513,7 +721,8 @@ class Parser {
     final base = baseNameOf(name);
 
     final args = <Arg>[];
-    if (_check('(')) {
+    final hadParens = _check('(');
+    if (hadParens) {
       _advance();
       while (!_check(')')) {
         args.add(_parseArg(name));
@@ -527,6 +736,11 @@ class Parser {
       }
       _expect(')', context: 'to close $name(...)');
     }
+
+    // A bare name is a reference to an existing widget value, not a
+    // zero-argument constructor call.
+    final isReference = args.isEmpty && !_check('(') && !_check('{') &&
+        !hadParens;
 
     List<Node>? children;
     String? callback;
@@ -570,6 +784,8 @@ class Parser {
     return WidgetNode(
       name: name,
       args: args,
+      isConst: isConst,
+      isReference: isReference,
       children: children,
       callback: callback,
       callbackSpan: callbackSpan,
@@ -709,6 +925,20 @@ class Parser {
         _current.span,
       );
     }
+    // `Text(if (flag) "yes" else "no")` is not Dart — `if` is only an
+    // expression inside a collection literal. Left alone this emitted code
+    // that could never compile.
+    final first = parts.first;
+    if (first is DartText && RegExp(r'^if\s*\(').hasMatch(first.text)) {
+      throw FlxError(
+        '`if` is not an expression in Dart',
+        _spanFrom(start),
+        hint: 'use a conditional: '
+            '${name ?? 'value'}: flag ? "yes" : "no"  —  or put the `if` '
+            'inside a list, where collection-if is allowed',
+      );
+    }
+
     return Arg(name: name, parts: parts, span: _spanFrom(start));
   }
 
@@ -759,25 +989,26 @@ class Parser {
   /// True when `{` opens a block lambda — `{ a, b => ... }` or `{ a -> ... }`
   /// — rather than a map literal or a Dart block.
   bool _lambdaAhead() {
-    var i = _pos + 1;
-    while (i < _tokens.length && _tokens[i].type == TokenType.identifier) {
-      i++;
-      if (i < _tokens.length && _tokens[i].lexeme == ',') {
-        i++;
-        continue;
-      }
-      break;
+    var depth = 0;
+    for (var i = _pos + 1; i < _tokens.length; i++) {
+      final lexeme = _tokens[i].lexeme;
+      if (lexeme == '=>' || lexeme == '->') return depth == 0;
+      // Parameters may be typed — `{ String value -> ... }` — so names,
+      // generics and nullability markers are all allowed before the arrow.
+      final isParamish = _tokens[i].type == TokenType.identifier ||
+          const {',', '<', '>', '?', '.'}.contains(lexeme);
+      if (!isParamish) return false;
+      if (lexeme == '<') depth++;
+      if (lexeme == '>') depth--;
     }
-    if (i >= _tokens.length) return false;
-    final lexeme = _tokens[i].lexeme;
-    return lexeme == '=>' || lexeme == '->';
+    return false;
   }
 
   /// True when the cursor sits on `Widget(...)  {` — a widget with a block,
   /// as opposed to an ordinary call.
   bool _widgetBlockAhead() {
     if (_current.type != TokenType.identifier) return false;
-    if (!_startsWidget(_current)) return false;
+    if (!_startsWidget(token: _current)) return false;
 
     var i = _pos + 1;
     // Named constructor: Image.asset
@@ -814,8 +1045,20 @@ class Parser {
   LambdaPart _parseLambdaPart() {
     final open = _expect('{');
     final params = <String>[];
-    while (_current.type == TokenType.identifier) {
-      params.add(_advance().lexeme);
+    while (!_check('=>') && !_check('->') && !_current.isEof) {
+      final tokens = <Token>[];
+      var depth = 0;
+      while (!_current.isEof) {
+        final lexeme = _current.lexeme;
+        if (depth == 0 &&
+            (lexeme == ',' || lexeme == '=>' || lexeme == '->')) {
+          break;
+        }
+        if (lexeme == '<') depth++;
+        if (lexeme == '>') depth--;
+        tokens.add(_advance());
+      }
+      if (tokens.isNotEmpty) params.add(serialize(tokens));
       if (_match(',')) continue;
       break;
     }

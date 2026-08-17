@@ -3,11 +3,13 @@
 
 import 'package:flx/flx.dart';
 import 'interop.dart';
+import 'kitchen_sink.dart';
 import 'ui_packages.dart';
 
 /// Every @page composable, keyed by its route pattern.
 final appRoutes = <RouteDef>[
   RouteDef('/gallery', (params) => const GalleryScreen()),
   RouteDef('/interop', (params) => const InteropScreen()),
+  RouteDef('/kitchen', (params) => const KitchenSink()),
 ];
 
