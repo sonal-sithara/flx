@@ -30,6 +30,13 @@ const containerWidgets = <String>{'Screen', 'Panel'};
 /// a second one around them.
 const scaffoldProviders = <String>{'Screen', 'Scaffold'};
 
+/// The bare widget name, without a named constructor or type arguments:
+/// `Image.asset` → `Image`, `LazyColumn<Todo>` → `LazyColumn`.
+String baseNameOf(String name) {
+  final cut = name.indexOf(RegExp(r'[.<]'));
+  return cut < 0 ? name : name.substring(0, cut);
+}
+
 /// Recursive-descent parser for `.flx`.
 class Parser {
   Parser(this.source) : _tokens = Lexer(source).tokenize();
@@ -379,7 +386,81 @@ class Parser {
   Node _parseChild() {
     if (_current.isIdent('if')) return _parseIf();
     if (_current.isIdent('for')) return _parseFor();
+    if (_check('(')) return _parseRawChild();
+    if (_check('...')) return _parseSpreadChild();
     return _parseWidget();
+  }
+
+  /// `(cond ? A() : B())` — a raw Dart expression used as a child.
+  ///
+  /// The escape hatch. Whatever the DSL has no syntax for can still be
+  /// written, so an unsupported construct is never a wall.
+  Node _parseRawChild() {
+    final open = _expect('(');
+    final tokens = <Token>[];
+    var depth = 1;
+    while (depth > 0) {
+      if (_current.isEof) {
+        throw FlxError(
+          'unterminated ( ... ) expression',
+          open.span,
+          hint: "add a closing ')'",
+        );
+      }
+      final token = _advance();
+      if (token.lexeme == '(') depth++;
+      if (token.lexeme == ')') {
+        depth--;
+        if (depth == 0) break;
+      }
+      tokens.add(token);
+    }
+    if (tokens.isEmpty) {
+      throw FlxError('empty ( ) expression', _spanFrom(open));
+    }
+    return RawNode(expression: serialize(tokens), span: _spanFrom(open));
+  }
+
+  /// `...expression` — splices a list of widgets into the children.
+  Node _parseSpreadChild() {
+    final start = _expect('...');
+    final tokens = _captureExpression();
+    if (tokens.isEmpty) {
+      throw FlxError(
+        'expected an expression after `...`',
+        _current.span,
+        hint: 'e.g.  ...vm.extraRows',
+      );
+    }
+    return RawNode(
+      expression: serialize(tokens),
+      span: _spanFrom(start),
+      isSpread: true,
+    );
+  }
+
+  /// Reads a widget name: `Text`, `Image.asset`, `LazyColumn<Todo>`.
+  String _parseWidgetName(Token first) {
+    final buffer = StringBuffer(first.lexeme);
+
+    while (_check('.') && _peek(1).type == TokenType.identifier) {
+      _advance();
+      buffer
+        ..write('.')
+        ..write(_advance().lexeme);
+    }
+
+    if (_check('<')) {
+      var depth = 0;
+      do {
+        final token = _advance();
+        if (token.lexeme == '<') depth++;
+        if (token.lexeme == '>') depth--;
+        buffer.write(token.lexeme);
+        if (token.lexeme == ',') buffer.write(' ');
+      } while (depth > 0 && !_current.isEof);
+    }
+    return buffer.toString();
   }
 
   WidgetNode _parseWidget() {
@@ -391,7 +472,8 @@ class Parser {
       );
     }
     final nameTok = _advance();
-    final name = nameTok.lexeme;
+    final name = _parseWidgetName(nameTok);
+    final base = baseNameOf(name);
 
     final args = <Arg>[];
     if (_check('(')) {
@@ -417,9 +499,25 @@ class Parser {
     String? indexVariable;
 
     if (_check('{')) {
-      if (layoutWidgets.containsKey(name) || containerWidgets.contains(name)) {
+      if (_lambdaAhead()) {
+        // `LayoutBuilder { ctx, box => ... }` — a trailing block that produces
+        // a widget. It becomes the `builder:` argument, which is what every
+        // builder-shaped widget in Flutter and its ecosystem calls it.
+        final lambda = _parseLambdaPart();
+        // A builder that takes parameters is `builder:` everywhere in Flutter
+        // and its ecosystem. A zero-argument one is positional by the same
+        // convention — GetX's Obx, MobX's Observer. Either way an explicit
+        // `name: { ... }` argument overrides the guess.
+        final named = lambda.returnsWidget && lambda.params.isNotEmpty;
+        args.add(Arg(
+          name: named ? 'builder' : null,
+          parts: [lambda],
+          span: lambda.span,
+        ));
+      } else if (layoutWidgets.containsKey(base) ||
+          containerWidgets.contains(base)) {
         children = _parseChildrenBlock(name, nameTok);
-      } else if (builderWidgets.contains(name)) {
+      } else if (builderWidgets.contains(base)) {
         final binding = _parseBuilderBinding(name);
         itemVariable = binding.$1;
         indexVariable = binding.$2;
@@ -565,8 +663,8 @@ class Parser {
       name = _advance().lexeme;
       _advance(); // `:`
     }
-    final tokens = _captureUntil(const {',', ')'});
-    if (tokens.isEmpty) {
+    final parts = _parseValueParts(const {',', ')'});
+    if (parts.isEmpty) {
       throw FlxError(
         name == null
             ? 'empty argument in $widget(...)'
@@ -574,11 +672,177 @@ class Parser {
         _current.span,
       );
     }
-    return Arg(
-      name: name,
-      value: serialize(tokens),
-      span: _spanFrom(start),
+    return Arg(name: name, parts: parts, span: _spanFrom(start));
+  }
+
+  /// Parses an argument value: ordinary Dart, with widget trees and block
+  /// lambdas recognised wherever they appear — including nested inside a list
+  /// or another call.
+  ///
+  /// This is what lets an argument hold a widget. Without it `body:`, `child:`
+  /// and every `builder:` in Flutter are unreachable from the DSL.
+  List<ArgPart> _parseValueParts(Set<String> terminators) {
+    final parts = <ArgPart>[];
+    final buffer = <Token>[];
+    var depth = 0;
+
+    void flush() {
+      if (buffer.isEmpty) return;
+      parts.add(DartText(serialize(buffer)));
+      buffer.clear();
+    }
+
+    while (!_current.isEof) {
+      final lexeme = _current.lexeme;
+      if (depth == 0 && terminators.contains(lexeme)) break;
+
+      if (lexeme == '{' && _lambdaAhead()) {
+        flush();
+        parts.add(_parseLambdaPart());
+        continue;
+      }
+      if (_widgetBlockAhead()) {
+        flush();
+        parts.add(WidgetPart(_parseWidget()));
+        continue;
+      }
+
+      if (lexeme == '(' || lexeme == '[' || lexeme == '{') {
+        depth++;
+      } else if (lexeme == ')' || lexeme == ']' || lexeme == '}') {
+        if (depth == 0) break;
+        depth--;
+      }
+      buffer.add(_advance());
+    }
+    flush();
+    return parts;
+  }
+
+  /// True when `{` opens a block lambda — `{ a, b => ... }` or `{ a -> ... }`
+  /// — rather than a map literal or a Dart block.
+  bool _lambdaAhead() {
+    var i = _pos + 1;
+    while (i < _tokens.length && _tokens[i].type == TokenType.identifier) {
+      i++;
+      if (i < _tokens.length && _tokens[i].lexeme == ',') {
+        i++;
+        continue;
+      }
+      break;
+    }
+    if (i >= _tokens.length) return false;
+    final lexeme = _tokens[i].lexeme;
+    return lexeme == '=>' || lexeme == '->';
+  }
+
+  /// True when the cursor sits on `Widget(...)  {` — a widget with a block,
+  /// as opposed to an ordinary call.
+  bool _widgetBlockAhead() {
+    if (_current.type != TokenType.identifier) return false;
+    if (!_startsWidget(_current)) return false;
+
+    var i = _pos + 1;
+    // Named constructor: Image.asset
+    while (i + 1 < _tokens.length &&
+        _tokens[i].lexeme == '.' &&
+        _tokens[i + 1].type == TokenType.identifier) {
+      i += 2;
+    }
+    if (i < _tokens.length && _tokens[i].lexeme == '<') {
+      i = _skipBalanced(i, '<', '>');
+      if (i < 0) return false;
+    }
+    if (i < _tokens.length && _tokens[i].lexeme == '(') {
+      i = _skipBalanced(i, '(', ')');
+      if (i < 0) return false;
+    }
+    return i < _tokens.length && _tokens[i].lexeme == '{';
+  }
+
+  /// Index just past the balanced pair starting at [start], or -1.
+  int _skipBalanced(int start, String open, String close) {
+    var depth = 0;
+    for (var i = start; i < _tokens.length; i++) {
+      final lexeme = _tokens[i].lexeme;
+      if (lexeme == open) depth++;
+      if (lexeme == close) {
+        depth--;
+        if (depth == 0) return i + 1;
+      }
+    }
+    return -1;
+  }
+
+  LambdaPart _parseLambdaPart() {
+    final open = _expect('{');
+    final params = <String>[];
+    while (_current.type == TokenType.identifier) {
+      params.add(_advance().lexeme);
+      if (_match(',')) continue;
+      break;
+    }
+
+    if (_match('=>')) {
+      final children = <Node>[];
+      while (!_check('}')) {
+        if (_current.isEof) {
+          throw FlxError(
+            'unterminated block lambda',
+            open.span,
+            hint: "add a closing '}'",
+          );
+        }
+        children.add(_parseChild());
+      }
+      _expect('}', context: 'to close the block lambda');
+      if (children.isEmpty) {
+        throw FlxError(
+          'a `=>` block must produce a widget',
+          _spanFrom(open),
+          hint: 'use `->` for a block that just runs statements',
+        );
+      }
+      return LambdaPart(
+        params: params,
+        children: children,
+        span: _spanFrom(open),
+      );
+    }
+
+    _expect('->',
+        context: 'after the block lambda parameters',
+        hint: 'use `=>` when the block produces a widget, `->` when it just '
+            'runs statements');
+    final body = _captureRawBody(open);
+    return LambdaPart(
+      params: params,
+      statements: body,
+      span: _spanFrom(open),
     );
+  }
+
+  /// Raw source up to the `}` matching an already-open block.
+  String _captureRawBody(Token open) {
+    final bodyStart = _tokens[_pos - 1].span.end;
+    var depth = 1;
+    while (true) {
+      if (_current.isEof) {
+        throw FlxError(
+          'unterminated block lambda',
+          open.span,
+          hint: "add a closing '}'",
+        );
+      }
+      final token = _advance();
+      if (token.lexeme == '{') depth++;
+      if (token.lexeme == '}') {
+        depth--;
+        if (depth == 0) {
+          return source.text.substring(bodyStart, token.span.start);
+        }
+      }
+    }
   }
 
   IfNode _parseIf() {

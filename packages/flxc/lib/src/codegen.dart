@@ -1,7 +1,7 @@
 import 'ast.dart';
 import 'diagnostics.dart';
 import 'parser.dart'
-    show containerWidgets, layoutWidgets, scaffoldProviders;
+    show baseNameOf, containerWidgets, layoutWidgets, scaffoldProviders;
 
 /// Named arguments that are lifted out of a layout call and applied as a
 /// trailing modifier chain instead. `Column(padding: 16) { ... }` becomes
@@ -178,7 +178,7 @@ class CodeGenerator {
     // Scaffold) must not get a second one wrapped around it.
     final root = c.root;
     final providesScaffold =
-        root is WidgetNode && scaffoldProviders.contains(root.name);
+        root is WidgetNode && scaffoldProviders.contains(baseNameOf(root.name));
     final wrapInScaffold = c.isPage && !providesScaffold;
 
     // Work out where the root expression will sit before generating it: the
@@ -235,13 +235,22 @@ class CodeGenerator {
             hint: 'wrap it in a Column { ... } so there is a single root '
                 'widget',
           ),
+        RawNode() => node.isSpread
+            ? throw FlxError(
+                '`...` cannot be the root of a composable',
+                node.span,
+                hint: 'a composable returns one widget — wrap it in a '
+                    'Column { ... }',
+              )
+            : node.expression,
       };
 
   String _widget(WidgetNode w, int depth) {
-    if (layoutWidgets.containsKey(w.name)) return _layout(w, depth);
-    if (containerWidgets.contains(w.name)) return _container(w, depth);
+    final base = baseNameOf(w.name);
+    if (layoutWidgets.containsKey(base)) return _layout(w, depth);
+    if (containerWidgets.contains(base)) return _container(w, depth);
 
-    final split = _splitArgs(w);
+    final split = _splitArgs(w, depth);
     final args = split.args;
 
     if (w.isBuilder) {
@@ -249,7 +258,34 @@ class CodeGenerator {
     } else if (w.callback != null) {
       args.add(_callback(w.callback!, w.callbackParams, depth));
     }
+
+    // An argument holding a widget tree spans several lines, and packing the
+    // rest onto the same line makes the result unreadable. Generated code is
+    // meant to be read, so wrap.
+    if (_hasNestedTree(w)) {
+      return '${w.name}(\n'
+          '${_pad(depth + 1)}${args.join(',\n${_pad(depth + 1)}')},\n'
+          '${_pad(depth)})${split.modifiers.join()}';
+    }
     return '${w.name}(${args.join(', ')})${split.modifiers.join()}';
+  }
+
+  /// True when any argument contains a widget tree or a widget-returning
+  /// block, and therefore renders across multiple lines.
+  static bool _hasNestedTree(WidgetNode w) {
+    for (final a in w.args) {
+      for (final part in a.parts) {
+        if (part is WidgetPart) return true;
+        if (part is LambdaPart && part.returnsWidget) {
+          if (part.children!.length > 1) return true;
+          if (part.children!.first is! WidgetNode) return true;
+          if (_hasNestedTree(part.children!.first as WidgetNode)) return true;
+          final only = part.children!.first as WidgetNode;
+          if (only.children != null) return true;
+        }
+      }
+    }
+    return false;
   }
 
   /// Separates real constructor arguments from modifier-chain arguments.
@@ -258,8 +294,11 @@ class CodeGenerator {
   /// fill the space inside a Screen. Layout widgets get the full modifier set
   /// because their target is a `List<Widget>` extension with no members to
   /// collide with; every other widget gets only [_universalModifiers].
-  ({List<String> args, List<String> modifiers}) _splitArgs(WidgetNode w) {
-    final isLayout = layoutWidgets.containsKey(w.name);
+  ({List<String> args, List<String> modifiers}) _splitArgs(
+    WidgetNode w,
+    int depth,
+  ) {
+    final isLayout = layoutWidgets.containsKey(baseNameOf(w.name));
 
     final args = <String>[];
     final modifiers = <String>[];
@@ -271,15 +310,14 @@ class CodeGenerator {
       final mod = liftable ? _modifiers[name] : null;
 
       if (mod == null) {
-        args.add(name == null
-            ? _shorthand(a, w.name)
-            : '$name: ${_shorthand(a, w.name)}');
+        final value = _argValue(a, w.name, depth);
+        args.add(name == null ? value : '$name: $value');
         continue;
       }
 
       if (mod == _Mod.flag) {
-        if (a.value == 'false') continue;
-        if (a.value != 'true') {
+        if (a.text == 'false') continue;
+        if (a.text != 'true') {
           throw FlxError(
             "'$name:' on ${w.name} is a flag and only accepts true or false",
             a.span,
@@ -288,7 +326,7 @@ class CodeGenerator {
         }
         modifiers.add('.$name()');
       } else {
-        modifiers.add('.$name(${_shorthand(a, w.name)})');
+        modifiers.add('.$name(${_argValue(a, w.name, depth)})');
       }
     }
     return (args: args, modifiers: modifiers);
@@ -296,7 +334,7 @@ class CodeGenerator {
 
   /// `Screen(title: "Inbox") { a, b }` → `Screen(title: "Inbox", children: [a, b])`
   String _container(WidgetNode w, int depth) {
-    final split = _splitArgs(w);
+    final split = _splitArgs(w, depth);
     final args = split.args;
 
     final children = w.children ?? const <Node>[];
@@ -332,7 +370,7 @@ class CodeGenerator {
   /// `Column(gap: 12, padding: 16) { a, b }`
   ///   → `[a, b].column(gap: 12).padding(16)`
   String _layout(WidgetNode w, int depth) {
-    final method = layoutWidgets[w.name]!;
+    final method = layoutWidgets[baseNameOf(w.name)]!;
 
     for (final a in w.args) {
       if (a.name == null) {
@@ -344,7 +382,7 @@ class CodeGenerator {
       }
     }
 
-    final split = _splitArgs(w);
+    final split = _splitArgs(w, depth);
     final callArgs = split.args;
     final mods = split.modifiers;
 
@@ -366,6 +404,11 @@ class CodeGenerator {
       WidgetNode() => '$pad${_widget(node, depth)}',
       IfNode() => '$pad${_collectionIf(node, depth)}',
       ForNode() => '$pad${_collectionFor(node, depth)}',
+      // `...items` becomes a collection spread; `(expr)` is passed straight
+      // through as the widget it evaluates to.
+      RawNode() => node.isSpread
+          ? '$pad...${node.expression}'
+          : '$pad${node.expression}',
     };
   }
 
@@ -398,24 +441,65 @@ class CodeGenerator {
         '$pad]';
   }
 
+  /// Renders an argument value: plain Dart, a widget tree, a block lambda, or
+  /// any mix of the three.
+  String _argValue(Arg a, String widget, int depth) {
+    if (a.text != null) return _shorthand(a, widget);
+
+    final buffer = StringBuffer();
+    for (final part in a.parts) {
+      switch (part) {
+        case DartText():
+          buffer.write(part.text);
+        case WidgetPart():
+          buffer.write(_widget(part.widget, depth + 1));
+        case LambdaPart():
+          buffer.write(_lambda(part, depth));
+      }
+    }
+    return buffer.toString();
+  }
+
+  /// `{ a, b => Widget }` → `(a, b) => Widget`
+  /// `{ a -> stmts }`     → `(a) { stmts; }`
+  String _lambda(LambdaPart lambda, int depth) {
+    final signature = '(${lambda.params.join(', ')})';
+
+    final children = lambda.children;
+    if (children == null) {
+      return _callback(lambda.statements ?? '', lambda.params, depth);
+    }
+
+    // A single child reads better inline; several are stacked into a column
+    // so the block stays unrestricted.
+    final body = children.length == 1 && children.first is WidgetNode
+        ? _widget(children.first as WidgetNode, depth + 1)
+        : '[\n'
+            '${children.map((c) => _child(c, depth + 2)).join(',\n')},\n'
+            '${_pad(depth + 1)}].column()';
+
+    return '$signature => $body';
+  }
+
   String _shorthand(Arg a, String widget) {
-    if (!a.isShorthand) return a.value;
+    final value = a.text!;
+    if (!a.isShorthand) return value;
     final name = a.name;
-    if (name == null) return a.value;
+    if (name == null) return value;
 
     final type = _shorthandTypes[name] ??
         _suffixType(name) ??
-        (layoutWidgets.containsKey(widget) ? _layoutOnlyShorthands[name] : null);
+        (layoutWidgets.containsKey(baseNameOf(widget))
+            ? _layoutOnlyShorthands[name]
+            : null);
     if (type == null) {
       throw FlxError(
-        "'$name: ${a.value}' — flxc doesn't know what type '${a.value}' "
-        'belongs to',
+        "'$name: $value' — flxc doesn't know what type '$value' belongs to",
         a.span,
-        hint: 'write the type out in full, e.g. '
-            "$name: SomeType${a.value}",
+        hint: 'write the type out in full, e.g. $name: SomeType$value',
       );
     }
-    return '$type${a.value}';
+    return '$type$value';
   }
 
   /// Callback bodies are raw Dart. Re-indent them to sit correctly in the

@@ -93,6 +93,21 @@ const hooks = <FlxSymbol>[
       'A later `val` cannot read that resolved value — hooks are positional, '
       'so it only exists inside the generated closure. Use `name\$.data`.',
       snippet: r'useFetch(${1:fetcher})'),
+  FlxSymbol('useStream', FlxKind.hook,
+      'AsyncValue<T> useStream<T>(Stream<T> stream, {T? initialData, List<Object?> keys})',
+      'Subscribes to a stream and rebuilds on every event. The stream '
+      'counterpart of `useFetch`, and what makes BLoC-style and '
+      'Riverpod-style sources usable — their state arrives as a stream.\n\n'
+      'In a `val` this generates the same `AsyncValue.when` wrapping as '
+      '`useFetch`. Pass `initialData:` (a bloc\'s current state, say) to skip '
+      'the loading frame. The subscription is cancelled on dispose.',
+      snippet: r'useStream(${1:stream})'),
+  FlxSymbol('useStreamValue', FlxKind.hook,
+      'T useStreamValue<T>(T initial, Stream<T> stream, {List<Object?> keys})',
+      'The latest value of a stream, without loading or error states. For '
+      'sources that always have a current value, where `.when` wrapping is '
+      'just noise.',
+      snippet: r'useStreamValue(${1:initial}, ${2:stream})'),
   FlxSymbol('useInterval', FlxKind.hook,
       'void useInterval(VoidCallback callback, Duration delay)',
       'Runs a callback repeatedly. The timer is cancelled on dispose.'),
@@ -244,6 +259,45 @@ const widgets = <FlxSymbol>[
       'A circular avatar, falling back to a person icon.'),
   FlxSymbol('Icon', FlxKind.widget, 'Icon(IconData icon, {double? size, Color? color})',
       'A Material icon. `icon: .add` resolves against `Icons`.'),
+  FlxSymbol('LayoutBuilder', FlxKind.widget,
+      'LayoutBuilder({required Widget Function(BuildContext, BoxConstraints) builder})',
+      'Builds against the incoming constraints. The trailing block binds them '
+      'and produces the widget:\n\n'
+      '```\nLayoutBuilder { context, box =>\n  Text("\${box.maxWidth}")\n}\n```',
+      snippet: 'LayoutBuilder { context, box =>\n  \$0\n}'),
+  FlxSymbol('StreamBuilder', FlxKind.widget,
+      'StreamBuilder<T>({Stream<T>? stream, T? initialData, required Widget Function(BuildContext, AsyncSnapshot<T>) builder})',
+      'Rebuilds on each stream event. Usually `useStream` in a `val` reads '
+      'better; reach for this when you need the snapshot itself.',
+      snippet: 'StreamBuilder(stream: \${1:stream}) { context, snapshot =>\n  \$0\n}'),
+  FlxSymbol('FutureBuilder', FlxKind.widget,
+      'FutureBuilder<T>({Future<T>? future, T? initialData, required Widget Function(BuildContext, AsyncSnapshot<T>) builder})',
+      'Rebuilds as a future resolves. `useFetch` in a `val` is the flx way; '
+      'this is here for interop with code that already hands you a Future.',
+      snippet: 'FutureBuilder(future: \${1:future}) { context, snapshot =>\n  \$0\n}'),
+  FlxSymbol('ValueListenableBuilder', FlxKind.widget,
+      'ValueListenableBuilder<T>({required ValueListenable<T> valueListenable, required Widget Function(BuildContext, T, Widget?) builder})',
+      'Rebuilds when a ValueListenable changes. `useListenable` usually reads '
+      'better, since it needs no extra nesting.',
+      snippet: 'ValueListenableBuilder(valueListenable: \${1:notifier}) { context, value, child =>\n  \$0\n}'),
+  FlxSymbol('AnimatedBuilder', FlxKind.widget,
+      'AnimatedBuilder({required Listenable animation, required Widget Function(BuildContext, Widget?) builder})',
+      'Rebuilds on every tick of an animation.',
+      snippet: 'AnimatedBuilder(animation: \${1:controller}) { context, child =>\n  \$0\n}'),
+  FlxSymbol('Builder', FlxKind.widget,
+      'Builder({required Widget Function(BuildContext) builder})',
+      'Introduces a new BuildContext below this point — the fix for "no '
+      'Scaffold above this context".',
+      snippet: 'Builder { context =>\n  \$0\n}'),
+  FlxSymbol('Scaffold', FlxKind.widget,
+      'Scaffold({PreferredSizeWidget? appBar, Widget? body, Widget? floatingActionButton, Widget? drawer})',
+      'Flutter\'s own page scaffold. `Screen` wraps it with an app bar and '
+      'action button already wired; use this when you need the full surface.',
+      snippet: 'Scaffold(\n  appBar: AppBar(title: Text("\${1:Title}")),\n  body: \$0,\n)'),
+  FlxSymbol('AppBar', FlxKind.widget,
+      'AppBar({Widget? title, List<Widget>? actions, Widget? leading})',
+      'The top bar of a Scaffold.',
+      snippet: 'AppBar(title: Text("\${1:Title}"))'),
   FlxSymbol('SizedBox', FlxKind.widget, 'SizedBox({double? width, double? height})',
       'Fixed-size box, usually for spacing. Prefer `gap:` on a layout.'),
   FlxSymbol('Spacer', FlxKind.widget, 'Spacer({int flex})',
@@ -344,6 +398,17 @@ const widgetArguments = <String, List<String>>{
   'Section': ['title', 'child', 'action'],
   'Avatar': ['size'],
   'Icon': ['size', 'color'],
+  'LayoutBuilder': ['builder'],
+  'StreamBuilder': ['stream', 'initialData', 'builder'],
+  'FutureBuilder': ['future', 'initialData', 'builder'],
+  'ValueListenableBuilder': ['valueListenable', 'builder', 'child'],
+  'AnimatedBuilder': ['animation', 'builder', 'child'],
+  'Builder': ['builder'],
+  'Scaffold': [
+    'appBar', 'body', 'floatingActionButton', 'drawer', 'bottomNavigationBar',
+    'backgroundColor',
+  ],
+  'AppBar': ['title', 'actions', 'leading', 'centerTitle', 'backgroundColor'],
   'SizedBox': ['width', 'height'],
   'Spacer': ['flex'],
   'Divider': ['height', 'thickness', 'color'],

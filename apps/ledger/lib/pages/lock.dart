@@ -60,7 +60,7 @@ class LockScreen extends Composable {
             vm.backspace();
           }),
         ].row(gap: 8, main: MainAxisAlignment.center),
-        Button(vm.isLockedOut ? "Locked out": "Unlock", () {
+        Button(vm.isLockedOut ? "Locked out" : "Unlock", () {
           if (vm.submit()) nav.toPath("/");
         }),
       ],

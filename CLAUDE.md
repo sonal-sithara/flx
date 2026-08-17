@@ -3,6 +3,33 @@
 A Compose/Next.js-style framework on top of stock Flutter (never fork the SDK).
 Users write `.flx` files; `flxc` transpiles them to Dart.
 
+## The mission, and the rule that follows from it
+
+**flx exists to make Flutter code read cleanly, the way Jetpack Compose does.
+Nothing else.**
+
+It is not a smaller Flutter, an opinionated subset, or a walled garden. So:
+
+> **The DSL must never impose a limitation.** Anything expressible in Flutter
+> must be expressible in flx. If a widget, package or pattern cannot be
+> written, that is a bug in flxc — not a constraint for the user to work
+> around.
+
+This is the first question to ask of any change: *does this make something
+impossible?* If yes, the design is wrong, however tidy it looks.
+
+It has been violated before, and the failure mode is always the same: a
+hardcoded table of known widget names. Argument values were once captured as
+flat token runs, which silently made every builder-shaped widget — including
+Flutter's own `LayoutBuilder` — impossible to write. Generality has to be
+designed in; it never emerges from a longer table.
+
+The escape hatches exist so that a gap is never a wall:
+`(any Dart expression)` as a child, `...spread`, `name: { params => ... }` on
+any argument, and named constructors and type arguments everywhere.
+`apps/interop` compiles a screen using BLoC, Provider and GetX together, so
+the claim stays true.
+
 ## Architecture
 
 Monorepo with path dependencies — no melos, no workspace tooling.
@@ -17,6 +44,8 @@ Monorepo with path dependencies — no melos, no workspace tooling.
 - `apps/ledger/` — **Ledger**, the flagship app (expense tracker). `domain/` is
   plain Dart, `data/` holds storage + repository + ViewModels, `pages/*.flx`
   are the screens.
+- `apps/interop/` — not an app: a compile target proving flx composes with
+  BLoC, Provider and GetX at once. Guards the no-limitations rule.
 - `packages/flx_lsp/` — the language server. `analysis.dart` caches parses,
   `completion.dart` is token-based (never AST-based), `catalog.dart` is the
   hand-written knowledge of hooks and widgets, `semantics.dart` bridges to the
@@ -31,7 +60,7 @@ hand-edited.
 ```bash
 make build      # transpile all .flx + generate routes.g.dart
 make watch      # rebuild Ledger's pages on save
-make test       # 296 tests: compiler goldens, server, runtime, app
+make test       # 309 tests: compiler goldens, server, runtime, app
 make ci         # analyze + build + stale-codegen check + test
 make run        # launch Ledger
 ```
@@ -46,11 +75,13 @@ make run        # launch Ledger
 - Context hooks (`useNavigator` etc.) are build-time only; captured in vals,
   used in callbacks.
 - Hooks are positional. Effects run **post-frame**, never during build.
-- A trailing `{ }` is children after a layout widget (Column/Row/Stack/Wrap) or
-  a container widget (Screen/Panel); an item binding after a builder widget
-  (LazyColumn/LazyRow/LazyGrid, `{ x in ... }`); otherwise a callback, which
-  may take parameters (`{ v -> ... }`). Always keyed off the widget name,
-  never type inference.
+- Block forms, in the order the parser tries them:
+  `{ a, b => widgets }` a widget-returning builder (→ `builder:` with
+  parameters, positional without); `{ x in ... }` a lazy item binding;
+  `{ ... }` children after a layout or container widget; `{ v -> stmts }` or
+  `{ stmts }` a void callback. Argument values may themselves hold widget
+  trees and block lambdas, at any nesting depth — that is what makes arbitrary
+  third-party APIs reachable.
 - Modifier lifting (`padding:`, `expanded:`, ...) is unrestricted only on
   layout widgets. Everywhere else just `_universalModifiers` are lifted: an
   instance member beats an extension method in Dart, so lifting a name the

@@ -38,7 +38,7 @@ class SettingsScreen extends Composable {
         Panel(
           title: "Security",
           children: [
-            Text(vm.hasPin ? "A PIN is set. It is asked for on every launch.": "No PIN set — the ledger opens straight away.", style: Styles.caption),
+            Text(vm.hasPin ? "A PIN is set. It is asked for on every launch." : "No PIN set — the ledger opens straight away.", style: Styles.caption),
             Field(controller: pin, label: "New PIN", obscure: true, keyboard: TextInputType.number, error: vm.pinError),
             Field(controller: confirm, label: "Confirm PIN", obscure: true, keyboard: TextInputType.number),
             Button("Set PIN", () {

@@ -1,0 +1,57 @@
+// Everything the DSL needs in order not to be a walled garden: any Flutter or
+// third-party widget, whatever shape its API takes.
+import "../data/bloc.dart"
+
+@page("/interop")
+composable InteropScreen {
+  val bloc  = useInject<CounterBloc>()
+  val state = useStream(bloc.stream, initialData: bloc.state)
+
+  Column(gap: 12) {
+    // A trailing block that produces a widget becomes `builder:`, which is
+    // what every builder-shaped widget calls it.
+    LayoutBuilder { context, box =>
+      Text("width ${box.maxWidth}")
+    }
+
+    // A block lambda on an explicitly named argument, for the ones that
+    // don't use `builder:`.
+    ValueListenableBuilder(
+      valueListenable: bloc.notifier,
+      builder: { context, value, child =>
+        Column(gap: 4) {
+          Text("value $value")
+          Text("count ${state.count}")
+        }
+      },
+    )
+
+    // A widget tree as an ordinary argument value.
+    Scaffold(
+      appBar: AppBar(title: Text("Interop")),
+      body: Column(gap: 8, padding: 16) {
+        Text("a body built in the DSL")
+      },
+    )
+
+    // Named constructors and type arguments.
+    Image.asset("logo.png")
+    LazyColumn<Todo>(items: bloc.todos, gap: 4) { todo, i in
+      Text("${i + 1}. ${todo.title}")
+    }
+
+    // Widgets with blocks nested inside a Dart list.
+    Wrap(spacing: 8) {
+      Text("chip")
+    }
+
+    // The escape hatch: any Dart expression, and a spread.
+    (bloc.isEmpty ? EmptyState(title: "Nothing") : Text("Loaded"))
+    ...bloc.extraRows
+
+    // A void block lambda on a named argument.
+    Field(controller: bloc.query, onSubmitted: { text ->
+      bloc.search(text)
+    })
+  }
+}

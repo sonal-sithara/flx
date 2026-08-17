@@ -23,7 +23,7 @@ class TransactionRow extends Composable {
   Widget build(BuildContext context) {
     final nav = useNavigator();
 
-    return Tile(title: tx.note.isEmpty ? vm.categoryName(tx): tx.note, subtitle: "${vm.categoryName(tx)} · ${vm.accountName(tx)} · ${formatRelativeDate(tx.date)}", trailing: tx.kind == TxKind.income ? tx.amount.format(showSign: true): "-${tx.amount.format()}", leading: Dot(Color(vm.categoryColor(tx))), onTap: () => nav.toPath("/transactions/${tx.id}"));
+    return Tile(title: tx.note.isEmpty ? vm.categoryName(tx) : tx.note, subtitle: "${vm.categoryName(tx)} · ${vm.accountName(tx)} · ${formatRelativeDate(tx.date)}", trailing: tx.kind == TxKind.income ? tx.amount.format(showSign: true) : "-${tx.amount.format()}", leading: Dot(Color(vm.categoryColor(tx))), onTap: () => nav.toPath("/transactions/${tx.id}"));
   }
 }
 
@@ -47,7 +47,7 @@ class TransactionsScreen extends Composable {
           vm.setSearch(text);
         }),
         [
-          Button(vm.query.kind == null ? "All": vm.query.kind!.label, () {
+          Button(vm.query.kind == null ? "All" : vm.query.kind!.label, () {
             vm.setKind(vm.query.kind == null ? TxKind.expense : null);
           }),
           if (vm.isFiltered) ...[

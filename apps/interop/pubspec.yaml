@@ -1,0 +1,28 @@
+name: interop
+description: >-
+  Proof that flx composes with the ecosystem. Not an app — a compile target.
+  If a .flx screen using BLoC, Provider and GetX together stops compiling,
+  `make ci` fails here.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flx:
+    path: ../../packages/flx
+
+  # Deliberately the three most popular state-management packages, all with
+  # builder-shaped widget APIs that the DSL has to be able to express.
+  flutter_bloc: ^8.1.0
+  provider: ^6.1.0
+  get: ^4.6.6
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

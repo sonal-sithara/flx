@@ -309,6 +309,101 @@ void main() {
     });
   });
 
+  group('useStream', () {
+    testWidgets('goes loading -> data as events arrive', (tester) async {
+      final controller = StreamController<String>();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(wrap(Probe((_) {
+        final result = useStream(controller.stream);
+        return result.when(
+          loading: () =>
+              const Text('loading', textDirection: TextDirection.ltr),
+          error: (e) => const Text('failed', textDirection: TextDirection.ltr),
+          data: (d) => Text(d, textDirection: TextDirection.ltr),
+        );
+      })));
+
+      expect(find.text('loading'), findsOneWidget);
+
+      controller.add('first');
+      await tester.pumpAndSettle();
+      expect(find.text('first'), findsOneWidget);
+
+      controller.add('second');
+      await tester.pumpAndSettle();
+      expect(find.text('second'), findsOneWidget);
+    });
+
+    testWidgets('initialData skips the loading frame', (tester) async {
+      final controller = StreamController<int>();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(wrap(Probe((_) {
+        final result = useStream(controller.stream, initialData: 7);
+        return Text('${result.data}', textDirection: TextDirection.ltr);
+      })));
+
+      // A bloc already has a current state; rendering a spinner over it would
+      // be a flicker for no reason.
+      expect(find.text('7'), findsOneWidget);
+    });
+
+    testWidgets('surfaces stream errors', (tester) async {
+      final controller = StreamController<String>();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(wrap(Probe((_) {
+        final result = useStream(controller.stream);
+        return result.when(
+          loading: () =>
+              const Text('loading', textDirection: TextDirection.ltr),
+          error: (e) => const Text('failed', textDirection: TextDirection.ltr),
+          data: (d) => Text(d, textDirection: TextDirection.ltr),
+        );
+      })));
+
+      controller.addError(StateError('nope'));
+      await tester.pumpAndSettle();
+      expect(find.text('failed'), findsOneWidget);
+    });
+
+    testWidgets('unsubscribes when the widget goes away', (tester) async {
+      final controller = StreamController<String>();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(wrap(Probe((_) {
+        final result = useStream(controller.stream);
+        return Text(result.data ?? 'none', textDirection: TextDirection.ltr);
+      })));
+      expect(controller.hasListener, isTrue);
+
+      await tester.pumpWidget(wrap(const SizedBox()));
+      expect(controller.hasListener, isFalse);
+
+      controller.add('late');
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('useStreamValue', () {
+    testWidgets('tracks the latest value without AsyncValue', (tester) async {
+      final controller = StreamController<int>();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(wrap(Probe((_) {
+        final value = useStreamValue(0, controller.stream);
+        return Text('$value', textDirection: TextDirection.ltr);
+      })));
+
+      expect(find.text('0'), findsOneWidget);
+      controller.add(42);
+      await tester.pumpAndSettle();
+      expect(find.text('42'), findsOneWidget);
+    });
+  });
+
   group('useListenable', () {
     testWidgets('rebuilds when the listenable notifies', (tester) async {
       final notifier = ValueNotifier<int>(0);

@@ -20,6 +20,7 @@ const _typeTokens = {',', '.', '<', '>', '?', '(', ')'};
 /// and readable.
 String serialize(List<Token> tokens) {
   final generics = _findGenerics(tokens);
+  final ternaryColons = _findTernaryColons(tokens);
   final buf = StringBuffer();
 
   for (var i = 0; i < tokens.length; i++) {
@@ -29,11 +30,55 @@ String serialize(List<Token> tokens) {
     if (i > 0) {
       final prev = tokens[i - 1];
       final inGeneric = generics.contains(i) || generics.contains(i - 1);
-      if (!inGeneric && _needsSpace(prev, t)) buf.write(' ');
+      // `a ? b : c` breathes; `name: value` does not.
+      if (ternaryColons.contains(i)) {
+        buf.write(' ');
+      } else if (!inGeneric && _needsSpace(prev, t)) {
+        buf.write(' ');
+      }
     }
     buf.write(lexeme);
   }
   return buf.toString();
+}
+
+/// Indices of `:` tokens that close a conditional expression rather than
+/// introduce a named argument or a map entry.
+///
+/// A `?` at the same nesting depth arms the next `:`. Both spellings are valid
+/// Dart, but `cond ? a: b` reads as a typo, and generated code is meant to be
+/// read.
+Set<int> _findTernaryColons(List<Token> tokens) {
+  final marked = <int>{};
+  final armed = <int>[]; // one counter per nesting depth
+  var depth = 0;
+  armed.add(0);
+
+  for (var i = 0; i < tokens.length; i++) {
+    final lexeme = tokens[i].lexeme;
+
+    if (lexeme == '(' || lexeme == '[' || lexeme == '{') {
+      depth++;
+      if (armed.length <= depth) armed.add(0);
+      armed[depth] = 0;
+      continue;
+    }
+    if (lexeme == ')' || lexeme == ']' || lexeme == '}') {
+      if (depth > 0) depth--;
+      continue;
+    }
+    // `?.` and `??` are operators, not conditionals. A `?` closing a nullable
+    // type is followed by a name or `>`, never by an expression needing `:`.
+    if (lexeme == '?') {
+      armed[depth]++;
+      continue;
+    }
+    if (lexeme == ':' && armed[depth] > 0) {
+      armed[depth]--;
+      marked.add(i);
+    }
+  }
+  return marked;
 }
 
 bool _needsSpace(Token prev, Token t) {

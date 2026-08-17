@@ -75,6 +75,59 @@ AsyncValue<T> useFetch<T>(
   return state.value;
 }
 
+/// Subscribes to a [stream] and rebuilds on every event.
+///
+/// The stream counterpart of [useFetch], and the reason BLoC-style and
+/// Riverpod-style sources compose with flx at all: their state arrives as a
+/// stream, not a future.
+///
+///   val state = useStream(bloc.stream, initialData: bloc.state)
+///
+/// In a `val`, flxc generates the same `AsyncValue.when` wrapping as
+/// [useFetch], so the name refers to the resolved value below.
+///
+/// [initialData] skips the loading state — pass a bloc's current state and the
+/// first frame already has data. A null [initialData] means "start loading",
+/// which for a nullable T is indistinguishable from an initial null; use
+/// [useFetch] or a non-nullable wrapper if that distinction matters.
+///
+/// The subscription is cancelled on dispose and whenever [stream] or [keys]
+/// change.
+AsyncValue<T> useStream<T>(
+  Stream<T> stream, {
+  T? initialData,
+  List<Object?> keys = const [],
+}) {
+  final state = useState<AsyncValue<T>>(
+    initialData == null
+        ? AsyncValue<T>.loading()
+        : AsyncValue<T>.withData(initialData),
+  );
+
+  useEffect(() {
+    final subscription = stream.listen(
+      (event) => state.value = AsyncValue<T>.withData(event),
+      onError: (Object error) => state.value = AsyncValue<T>.withError(error),
+    );
+    return subscription.cancel;
+  }, [stream, ...keys]);
+
+  return state.value;
+}
+
+/// The latest value of a [stream], without the loading and error states.
+///
+/// For sources that always have a current value — a bloc, a behaviour subject,
+/// a ticker — where `.when` wrapping is noise.
+T useStreamValue<T>(T initial, Stream<T> stream, {List<Object?> keys = const []}) {
+  final state = useState<T>(initial);
+  useEffect(() {
+    final subscription = stream.listen((event) => state.value = event);
+    return subscription.cancel;
+  }, [stream, ...keys]);
+  return state.value;
+}
+
 /// Run a callback repeatedly:
 /// useInterval(tick, const Duration(seconds: 1));
 void useInterval(void Function() callback, Duration delay) {

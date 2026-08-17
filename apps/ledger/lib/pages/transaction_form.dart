@@ -46,7 +46,7 @@ class TransactionForm extends Composable {
           form.setDate(picked);
         }),
         Field(controller: note, label: "Note", hint: "What was it for?", maxLines: 2),
-        Button(form.isSaving ? "Saving…": "Save", () {
+        Button(form.isSaving ? "Saving…" : "Save", () {
           form.save(amountText: amount.text, note: note.text).then((saved) {
           if (saved) nav.pop();
           });

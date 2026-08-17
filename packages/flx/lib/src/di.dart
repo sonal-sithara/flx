@@ -7,7 +7,12 @@ abstract class Disposable {
   void dispose();
 }
 
-typedef Provider<T> = T Function(Injector injector);
+/// Builds a service, given the injector it is being resolved from.
+///
+/// Named ServiceFactory rather than the obvious `Provider` because
+/// package:provider exports that name, and an app using both would not
+/// compile without an import prefix.
+typedef ServiceFactory<T> = T Function(Injector injector);
 
 /// A small, explicit DI container.
 ///
@@ -18,19 +23,19 @@ class Injector {
   Injector({Injector? parent}) : _parent = parent;
 
   final Injector? _parent;
-  final _providers = <Type, Provider<Object?>>{};
+  final _providers = <Type, ServiceFactory<Object?>>{};
   final _singletons = <Type, Object?>{};
   final _isSingleton = <Type>{};
 
   /// A new instance on every [get].
-  void factory<T extends Object>(Provider<T> create) {
+  void factory<T extends Object>(ServiceFactory<T> create) {
     _providers[T] = create;
     _isSingleton.remove(T);
     _singletons.remove(T);
   }
 
   /// One lazily-created instance, cached for the life of this scope.
-  void singleton<T extends Object>(Provider<T> create) {
+  void singleton<T extends Object>(ServiceFactory<T> create) {
     _providers[T] = create;
     _isSingleton.add(T);
     _singletons.remove(T);

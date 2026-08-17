@@ -161,6 +161,62 @@ void main() {
     });
   });
 
+  group('block lambdas and interop', () {
+    test('a `=>` block must produce a widget', () {
+      expectError(
+        'composable A {\n  Builder { context =>\n  }\n}\n',
+        message: 'a `=>` block must produce a widget',
+        hint: contains('`->`'),
+      );
+    });
+
+    test('a Dart set literal in an argument is left alone', () {
+      // `{ value }` is a set, not a lambda. Only `=>` or `->` after the
+      // names makes it a block, so ordinary Dart still passes through.
+      final dart = compiler.compileSource(
+        Source('test.flx', 'composable A {\n  Thing(cb: { value })\n}\n'),
+      );
+      expect(dart, contains('Thing(cb: {value})'));
+    });
+
+    test('an unterminated block lambda is reported at its opening brace', () {
+      expectError(
+        'composable A {\n  Builder { context =>\n    Text("hi")\n',
+        message: 'unterminated block lambda',
+      );
+    });
+
+    test('an empty ( ) child is rejected', () {
+      expectError(
+        'composable A {\n  Column {\n    ()\n  }\n}\n',
+        message: 'empty ( ) expression',
+      );
+    });
+
+    test('an unterminated ( ) child is reported', () {
+      expectError(
+        'composable A {\n  Column {\n    (a ? B() : C()\n',
+        message: 'unterminated ( ... ) expression',
+        hint: contains("')'"),
+      );
+    });
+
+    test('`...` needs something to spread', () {
+      expectError(
+        'composable A {\n  Column {\n    ...\n  }\n}\n',
+        message: 'expected an expression after `...`',
+      );
+    });
+
+    test('`...` cannot be a composable root', () {
+      expectError(
+        'composable A {\n  ...rows\n}\n',
+        message: '`...` cannot be the root of a composable',
+        hint: contains('Column'),
+      );
+    });
+  });
+
   group('codegen', () {
     test('unknown shorthand type', () {
       expectError(

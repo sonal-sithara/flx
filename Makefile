@@ -2,6 +2,7 @@
 
 FLXC   := dart run packages/flxc/bin/flxc.dart
 PAGES  := apps/ledger/lib/pages
+INTEROP := apps/interop/lib/pages
 
 help:
 	@echo "flx — development commands"
@@ -22,9 +23,11 @@ setup:
 	cd packages/flx_lsp && dart pub get
 	cd packages/flx     && flutter pub get
 	cd apps/ledger      && flutter pub get
+	cd apps/interop     && flutter pub get
 
 build:
 	@$(FLXC) build $(PAGES)
+	@$(FLXC) build $(INTEROP)
 
 watch:
 	@$(FLXC) watch $(PAGES)
@@ -40,6 +43,7 @@ analyze:
 	cd packages/flx_lsp && dart analyze
 	cd packages/flx     && flutter analyze
 	cd apps/ledger      && flutter analyze
+	cd apps/interop     && flutter analyze
 	@$(FLXC) analyze $(PAGES)
 
 lsp:
@@ -54,7 +58,7 @@ lsp-build:
 # A dirty tree after `build` means someone committed a .dart without
 # regenerating it from its .flx.
 ci: analyze build
-	@git diff --exit-code -- $(PAGES) \
+	@git diff --exit-code -- $(PAGES) $(INTEROP) \
 		|| (echo "generated Dart is stale — run 'make build' and commit"; exit 1)
 	@$(MAKE) test
 
@@ -62,7 +66,7 @@ run: build
 	cd apps/ledger && flutter run
 
 clean:
-	rm -f $(PAGES)/*.dart
+	rm -f $(PAGES)/*.dart $(INTEROP)/*.dart
 	rm -rf packages/flx_lsp/build
 	cd apps/ledger  && flutter clean
 	cd packages/flx && flutter clean

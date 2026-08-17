@@ -1,0 +1,41 @@
+import "package:flutter_bloc/flutter_bloc.dart"
+import "package:provider/provider.dart"
+import "package:get/get.dart"
+import "../state.dart"
+
+@page("/interop")
+composable InteropScreen {
+  val cubit    = useInject<CounterCubit>()
+  val count    = useStream(cubit.stream, initialData: cubit.state)
+  val settings = Provider.of<Settings>(useContext())
+  val getx     = Get.find<GetxCounter>()
+
+  Column(gap: 12, padding: 16) {
+    Text("useStream from a Cubit: ${count}")
+
+    BlocBuilder<CounterCubit, int>(
+      bloc: cubit,
+      builder: { context, state =>
+        Column(gap: 4) {
+          Text("BlocBuilder: ${state}")
+        }
+      },
+    )
+
+    Consumer<Settings>(
+      builder: { context, model, child =>
+        Text("Provider Consumer: ${model.name}")
+      },
+    )
+
+    Obx {  =>
+      Text("GetX Obx: ${getx.count.value}")
+    }
+
+    Button("bump") {
+      cubit.increment();
+      getx.increment();
+      settings.rename("Grace");
+    }
+  }
+}

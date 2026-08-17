@@ -99,6 +99,11 @@ void main() {
           // Flutter's own widgets, legitimately offered but not declared here.
           'Text', 'Icon', 'SizedBox', 'Spacer', 'Divider',
           'Column', 'Row', 'Stack', 'Wrap',
+          // Flutter's own builder-shaped widgets, documented so the DSL's
+          // interop story is discoverable from the editor.
+          'LayoutBuilder', 'StreamBuilder', 'FutureBuilder',
+          'ValueListenableBuilder', 'AnimatedBuilder', 'Builder',
+          'Scaffold', 'AppBar',
         }.contains(symbol.name))
           symbol.name,
       for (final hook in hooks) hook.name,

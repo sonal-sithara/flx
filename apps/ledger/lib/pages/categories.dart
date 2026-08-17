@@ -20,7 +20,7 @@ class CategoriesScreen extends Composable {
   @override
   Widget build(BuildContext context) {
     final vm = useViewModel<CategoriesViewModel>();
-    final budget = useTextField(text: vm.editingId == null ? "": vm.initialBudgetText(vm.editingId!));
+    final budget = useTextField(text: vm.editingId == null ? "" : vm.initialBudgetText(vm.editingId!));
     final name = useTextField();
 
     return Screen(
@@ -61,7 +61,7 @@ class CategoriesScreen extends Composable {
                     }),
                   ].row(gap: 8),
                 ] else ...[
-                  Button(line.hasBudget ? "Change budget": "Set a budget", () {
+                  Button(line.hasBudget ? "Change budget" : "Set a budget", () {
                     vm.startEditing(line.category.id);
                   }),
                 ],

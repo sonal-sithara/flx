@@ -4,6 +4,12 @@ A Compose/Next.js-style DSL for Flutter. You write `.flx`; `flxc` transpiles it
 to ordinary Dart. Built on stock Flutter — the SDK is never forked, and the
 runtime takes **zero pub dependencies**.
 
+**flx exists to make Flutter read cleanly, the way Jetpack Compose does — and
+to do nothing else.** It is not a subset of Flutter and not a walled garden:
+anything you can write in Flutter you can write in flx, with any package.
+`apps/interop` compiles one screen using BLoC, Provider and GetX together to
+keep that honest.
+
 ```
 composable Greeting(name) {
   val count = useState(0)
@@ -35,7 +41,7 @@ make setup     # fetch deps for all four packages
 make build     # .flx -> .dart, and regenerate routes.g.dart
 make run       # build, then launch Ledger
 make watch     # rebuild on every save
-make test      # 296 tests across compiler, server, runtime and app
+make test      # 309 tests across compiler, server, runtime and apps
 ```
 
 ## The compiler
@@ -194,6 +200,51 @@ To finish deep linking you still need the platform manifests: an Android
 intent-filter plus `/.well-known/assetlinks.json`, and the iOS Associated
 Domains capability plus `/.well-known/apple-app-site-association`.
 
+## Interop
+
+Any Flutter or third-party widget works, whatever shape its API takes:
+
+```
+// A trailing block that produces a widget becomes `builder:`
+LayoutBuilder { context, box =>
+  Text("width ${box.maxWidth}")
+}
+
+// Explicitly named, for APIs that call it something else
+ValueListenableBuilder(
+  valueListenable: notifier,
+  builder: { context, value, child =>
+    Column(gap: 4) { Text("$value") }
+  },
+)
+
+// Zero-argument builders are positional, by the same convention
+Obx {  =>
+  Text("${controller.count}")
+}
+
+// A widget tree as an ordinary argument value
+Scaffold(
+  appBar: AppBar(title: Text("Hi")),
+  body: Column(gap: 8) { Text("in an argument") },
+)
+
+// Named constructors, type arguments, raw Dart, and spreads
+Image.asset("logo.png")
+LazyColumn<Todo>(items: todos) { todo in Text(todo.title) }
+(isEmpty ? EmptyState(title: "Nothing") : Text("Loaded"))
+...extraRows
+```
+
+| Architecture | How it fits |
+| --- | --- |
+| **Clean / layered** | Native — Ledger *is* this |
+| **MVVM** | Native — `ViewModel` + `useViewModel` |
+| **BLoC** | `useStream(cubit.stream, initialData: cubit.state)`, or `BlocBuilder` directly |
+| **Provider** | `Provider.of<T>(useContext())` in a `val`, or `Consumer` directly |
+| **GetX** | `Get.find<T>()` in a `val`, `Obx { => ... }` for reactivity |
+| **Riverpod** | Providers work through `useStream`; `ConsumerWidget` does not, since `Composable` is its own StatefulWidget |
+
 ## Known limits
 
 - **Dependent fetches.** A `val` cannot read an earlier `useFetch`'s resolved
@@ -201,9 +252,10 @@ Domains capability plus `/.well-known/apple-app-site-association`.
   `.when(data:)` closure. `flxc` rejects it at compile time and points you at
   `name$.data`.
 - **Expressions are passed through.** Anything that isn't widget-tree structure
-  is handed to Dart verbatim — Dart remains the type checker. Errors in an
-  expression surface as Dart errors in the generated file.
-- **One root widget per composable**, and `if`/`for` cannot be that root.
+  is handed to Dart verbatim — Dart remains the type checker.
+- **One root widget per composable**, and `if`/`for` cannot be that root. Wrap
+  them, or use `(a ? B() : C())`.
+- **Riverpod's `ConsumerWidget`** cannot be a composable's base class.
 - **No rename, code actions or formatting** in the language server, and no
   member completion inside `${...}` — that needs Dart type information the
   server does not have.
@@ -233,7 +285,7 @@ Setup is in [tools/vscode-flx](tools/vscode-flx).
 
 ## Status
 
-Production-solid for in-house use: 296 tests, a language server, real
+Production-solid for in-house use: 309 tests, a language server, real
 diagnostics that land on the line you wrote, watch mode, and
 [Ledger](apps/ledger) — a complete expense tracker written entirely in the DSL,
 building for web, iOS, Android and macOS.

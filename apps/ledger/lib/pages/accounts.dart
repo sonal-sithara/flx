@@ -84,7 +84,7 @@ class AccountDetailScreen extends Composable {
             ].row(main: MainAxisAlignment.spaceBetween),
           ],
         ),
-        LazyColumn(items: vm.transactionsFor(id), gap: 4, empty: EmptyState(title: "No transactions", subtitle: "Nothing has been recorded against this account"), itemBuilder: (tx, _) => Tile(title: tx.note.isEmpty ? vm.categoryName(tx): tx.note, subtitle: "${vm.categoryName(tx)} · ${formatRelativeDate(tx.date)}", trailing: tx.kind == TxKind.income ? tx.amount.format(showSign: true): "-${tx.amount.format()}", onTap: () => nav.toPath("/transactions/${tx.id}"))).expanded(),
+        LazyColumn(items: vm.transactionsFor(id), gap: 4, empty: EmptyState(title: "No transactions", subtitle: "Nothing has been recorded against this account"), itemBuilder: (tx, _) => Tile(title: tx.note.isEmpty ? vm.categoryName(tx) : tx.note, subtitle: "${vm.categoryName(tx)} · ${formatRelativeDate(tx.date)}", trailing: tx.kind == TxKind.income ? tx.amount.format(showSign: true) : "-${tx.amount.format()}", onTap: () => nav.toPath("/transactions/${tx.id}"))).expanded(),
       ],
     );
   }
