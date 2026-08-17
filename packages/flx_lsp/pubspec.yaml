@@ -3,9 +3,9 @@ description: >-
   Language server for .flx — diagnostics, completion, hover, go-to-definition
   and document symbols, speaking LSP over stdio.
 version: 0.1.0
-repository: https://github.com/sonalsithara/flx
-issue_tracker: https://github.com/sonalsithara/flx/issues
-homepage: https://github.com/sonalsithara/flx
+repository: https://github.com/sonal-sithara/flx
+issue_tracker: https://github.com/sonal-sithara/flx/issues
+homepage: https://github.com/sonal-sithara/flx
 topics: ['flutter', 'dsl', 'lsp', 'language-server']
 
 environment:

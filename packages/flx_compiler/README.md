@@ -1,6 +1,6 @@
 # flxc
 
-The compiler for [flx](https://github.com/sonalsithara/flx). Transpiles `.flx`
+The compiler for [flx](https://github.com/sonal-sithara/flx). Transpiles `.flx`
 into ordinary Flutter Dart, generates the route table, and reports Dart's own
 type errors against the `.flx` that produced them.
 
@@ -34,7 +34,7 @@ generated files at line numbers corresponding to nothing you wrote. It works
 by occurrence — code generation emits user identifiers in source order and
 never reorders them, so the *n*th `foo` in the `.dart` is the *n*th `foo` in
 the `.flx`. That is a heuristic and reports itself as one: a unique name is
-certain, a mismatch is labelled *located by name*, and anything unmappable
+certain, a mismatch is labelled _located by name_, and anything unmappable
 reports the generated location rather than guessing.
 
 ## As a library

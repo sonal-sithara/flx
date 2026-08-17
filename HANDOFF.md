@@ -9,7 +9,7 @@ Work through this top to bottom; each step assumes the ones above it.
 
 ## 0. Replace the placeholder repository URL
 
-Every package points at `https://github.com/sonalsithara/flx`, which is a
+Every package points at `https://github.com/sonal-sithara/flx`, which is a
 guess derived from your email. If your GitHub account or repository name
 differs, fix it before anything else — pub.dev records it permanently on the
 listing.
@@ -103,12 +103,12 @@ code --install-extension flx-darwin-arm64.vsix
 5. Append a publish step to the `extension` job:
 
 ```yaml
-      - name: Publish
-        if: startsWith(github.ref, 'refs/tags/v')
-        working-directory: tools/vscode-flx
-        run: npx --yes @vscode/vsce publish --target ${{ matrix.target }} --pat $VSCE_PAT
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+- name: Publish
+  if: startsWith(github.ref, 'refs/tags/v')
+  working-directory: tools/vscode-flx
+  run: npx --yes @vscode/vsce publish --target ${{ matrix.target }} --pat $VSCE_PAT
+  env:
+    VSCE_PAT: ${{ secrets.VSCE_PAT }}
 ```
 
 Also worth adding before the first Marketplace release: a 128×128 `icon.png`
@@ -125,7 +125,7 @@ but unverified.
 **`vsce package` has never run here.** Expect it to complain about a missing
 icon, repository field, or LICENSE reference on the first attempt.
 
-The extension client itself *is* tested now:
+The extension client itself _is_ tested now:
 
 ```bash
 make vscode-test

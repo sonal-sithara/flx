@@ -1,6 +1,6 @@
 # flx_runtime
 
-The runtime half of [flx](https://github.com/sonalsithara/flx), a
+The runtime half of [flx](https://github.com/sonal-sithara/flx), a
 Compose-style DSL for Flutter. **Zero pub dependencies** — Flutter and nothing
 else.
 
@@ -38,7 +38,7 @@ class Counter extends Composable {
 ## What's in it
 
 **Hooks** — a slot-cursor engine, same principle as React, in ~250 lines.
-Effects run *after the frame*, not during build, so `useEffect(() => nav.push(…))`
+Effects run _after the frame_, not during build, so `useEffect(() => nav.push(…))`
 works instead of throwing.
 
 `useState` · `useRef` · `useMemoized` · `useEffect` · `useRebuild` ·
