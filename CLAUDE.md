@@ -17,19 +17,17 @@ Monorepo with path dependencies — no melos, no workspace tooling.
 - `apps/ledger/` — **Ledger**, the flagship app (expense tracker). `domain/` is
   plain Dart, `data/` holds storage + repository + ViewModels, `pages/*.flx`
   are the screens.
-- `example/` — small demo app exercising every DSL feature; doubles as a
-  regression target for codegen.
 - `tools/vscode-flx/` — TextMate grammar for `.flx`.
 
-In both apps `lib/pages/*.flx` is the source of truth; generated `.dart` files
-are never hand-edited.
+`lib/pages/*.flx` is the source of truth; generated `.dart` files are never
+hand-edited.
 
 ## Build
 
 ```bash
 make build      # transpile all .flx + generate routes.g.dart
 make watch      # rebuild Ledger's pages on save
-make test       # 205 tests: compiler goldens, runtime, both apps
+make test       # 210 tests: compiler goldens, runtime, app
 make ci         # analyze + build + stale-codegen check + test
 make run        # launch Ledger
 ```
@@ -59,6 +57,13 @@ make run        # launch Ledger
   changes — `make ci` fails on a stale tree.
 
 ## Working on the compiler
+
+Goldens compare generated text only — the fixtures reference undefined types
+and could never compile. Ledger is the only proof that generated Dart compiles
+and runs, so **every codegen path needs a screen that exercises it**. If you
+add one, add the screen too, or it is verified by string comparison alone.
+(`useFetch` lives on the Insights screen for this reason; the auto-`Scaffold`
+wrap is covered by the transaction form's two route composables.)
 
 Codegen changes must be reflected in goldens:
 

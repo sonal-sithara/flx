@@ -1,0 +1,72 @@
+import "../data/insights.dart"
+import "../domain/money.dart"
+
+// One month of the trend, drawn as a labelled bar.
+composable TrendBar(month: MonthlyTotal, peak: Money) {
+  Column(gap: 4, cross: .start) {
+    Row(main: .spaceBetween) {
+      Text(month.period.shortLabel, style: .caption)
+      Text(month.spent.format(), style: .caption)
+    }
+    ProgressBar(month.heightAgainst(peak), height: 6)
+  }
+}
+
+// The report itself.
+//
+// `val report = useFetch(...)` generates the AsyncValue.when loading/error
+// wrapping, so everything below sees a resolved InsightsReport. This lives in
+// its own composable rather than in the @page so the Screen's app bar stays
+// on screen while the report is being built — the loading and error states
+// replace only this subtree.
+composable InsightsBody {
+  val service = useInject<InsightsService>()
+  val report  = useFetch(service.buildReport)
+
+  Column(gap: 20, cross: .stretch) {
+    if (report.isEmpty) {
+      EmptyState(title: "Nothing to report yet", subtitle: "Record a few transactions and come back")
+    } else {
+      Panel(title: "At a glance") {
+        Row(main: .spaceBetween, cross: .start) {
+          Stat(value: report.averageMonthlySpend.format(), label: "Average month")
+          Stat(value: "${report.transactionCount}", label: "Transactions")
+        }
+        if (report.busiestMonth != null) {
+          Text("Busiest month was ${report.busiestMonth!.label}", style: .caption)
+        }
+        if (report.largestExpense != null) {
+          Text("Largest single expense: ${report.largestExpense!.amount.format()} on ${report.largestExpense!.note}", style: .caption)
+        }
+      }
+
+      Panel(title: "Last 12 months") {
+        for (month in report.trend) {
+          TrendBar(month: month, peak: report.peakSpend)
+        }
+      }
+
+      Panel(title: "Where it goes") {
+        for (slice in report.breakdown) {
+          Column(gap: 4, cross: .stretch) {
+            Row(main: .spaceBetween) {
+              Row(gap: 8) {
+                Dot(Color(slice.category.colorValue))
+                Text(slice.category.name, style: .body)
+              }
+              Text("${slice.spent.format()} · ${slice.percentLabel}", style: .caption)
+            }
+            ProgressBar(slice.share, color: Color(slice.category.colorValue), height: 6)
+          }
+        }
+      }
+    }
+  }
+}
+
+@page("/insights")
+composable InsightsScreen {
+  Screen(title: "Insights", subtitle: "Across the last year", scrollable: true) {
+    InsightsBody()
+  }
+}

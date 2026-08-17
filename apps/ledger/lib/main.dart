@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flx/flx.dart';
 
+import 'data/insights.dart';
 import 'data/ledger_repository.dart';
 import 'data/overview_view_models.dart';
 import 'data/security.dart';
@@ -41,7 +42,8 @@ Injector buildInjector({
     ..singleton<TransactionFormViewModel>(
         (_) => TransactionFormViewModel(repository))
     ..singleton<AccountsViewModel>((_) => AccountsViewModel(repository))
-    ..singleton<CategoriesViewModel>((_) => CategoriesViewModel(repository));
+    ..singleton<CategoriesViewModel>((_) => CategoriesViewModel(repository))
+    ..singleton<InsightsService>((_) => InsightsService(repository));
 
   // Resolved through the injector so it shares the one LockViewModel the
   // lock screen is bound to — two instances would let "Lock now" do nothing.

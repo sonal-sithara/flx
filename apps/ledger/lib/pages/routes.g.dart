@@ -5,6 +5,7 @@ import 'package:flx/flx.dart';
 import 'accounts.dart';
 import 'categories.dart';
 import 'dashboard.dart';
+import 'insights.dart';
 import 'lock.dart';
 import 'settings.dart';
 import 'transaction_form.dart';
@@ -15,6 +16,7 @@ final appRoutes = <RouteDef>[
   RouteDef('/', (params) => const DashboardScreen()),
   RouteDef('/accounts', (params) => const AccountsScreen()),
   RouteDef('/categories', (params) => const CategoriesScreen()),
+  RouteDef('/insights', (params) => const InsightsScreen()),
   RouteDef('/lock', (params) => const LockScreen()),
   RouteDef('/settings', (params) => const SettingsScreen()),
   RouteDef('/transactions', (params) => const TransactionsScreen()),

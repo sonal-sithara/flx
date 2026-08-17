@@ -1,5 +1,6 @@
 import "../data/overview_view_models.dart"
 import "../data/ledger_repository.dart"
+import "insights.dart"
 
 // One budget line: name, spend against budget, and a bar.
 composable BudgetRow(line: BudgetLine) {
@@ -73,6 +74,13 @@ composable DashboardScreen {
       Button("Categories") {
         nav.toPath("/categories")
       }
+    }
+
+    // Pushed as an object rather than by path: Insights takes no route
+    // parameters and is never deep-linked, so there is nothing for a URL to
+    // carry and this keeps the destination statically checked.
+    Button("Insights") {
+      nav.to(InsightsScreen())
     }
   }
 }

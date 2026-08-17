@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flx/flx.dart';
+import 'package:ledger/data/insights.dart';
 import 'package:ledger/data/ledger_repository.dart';
 import 'package:ledger/data/security.dart';
 import 'package:ledger/data/storage.dart';
@@ -437,4 +438,107 @@ void main() {
       );
     });
   });
+
+  group('insights', () {
+    testWidgets('object-push navigation reaches the screen and back',
+        (tester) async {
+      final harness = await boot();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      // nav.to(InsightsScreen()) — pushed as an object, not through the route
+      // table, so this exercises a different path from every other screen.
+      await tapText(tester, 'Insights');
+      expect(find.text('Across the last year'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Ledger'), findsOneWidget);
+    });
+
+    testWidgets('useFetch shows a spinner, then the report', (tester) async {
+      final harness = await boot();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Insights'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Insights'));
+
+      // One frame in: the route is up but the report has not resolved, so the
+      // generated AsyncValue.when is showing its loading branch.
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      await tester.pumpAndSettle();
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('At a glance'), findsOneWidget);
+      expect(find.text('Last 12 months'), findsOneWidget);
+      expect(find.text('Where it goes'), findsOneWidget);
+    });
+
+    testWidgets('the app bar survives the loading state', (tester) async {
+      final harness = await boot();
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Insights'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Insights'));
+      await tester.pump();
+      await tester.pump();
+
+      // The fetch lives in a child composable, so .when replaces only that
+      // subtree — the Screen's chrome stays put and you can still go back.
+      // (Two AppBars are on screen mid-transition: the one being pushed and
+      // the dashboard's, still animating out.)
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(AppBar), findsWidgets);
+      expect(find.text('Across the last year'), findsOneWidget,
+          reason: "the Insights app bar is up while the report is loading");
+
+      // Let the fetch finish, or it is still pending at teardown.
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a failing fetch renders the error branch', (tester) async {
+      final harness = await boot();
+      // The injector is the seam: swap one provider, leave everything else.
+      harness.injector.singleton<InsightsService>(
+        (_) => _BrokenInsightsService(harness.repository),
+      );
+
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Insights');
+
+      expect(find.textContaining('Error:'), findsOneWidget);
+      expect(find.textContaining('report unavailable'), findsOneWidget);
+    });
+
+    testWidgets('an empty ledger shows the empty state, not a blank page',
+        (tester) async {
+      final harness = await boot();
+      for (final tx
+          in harness.repository.query(const TxQuery(), limit: 1 << 30).items) {
+        await harness.repository.deleteTransaction(tx.id);
+      }
+
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Insights');
+
+      expect(find.text('Nothing to report yet'), findsOneWidget);
+    });
+  });
+}
+
+/// Stands in for InsightsService to drive the error branch of useFetch.
+class _BrokenInsightsService extends InsightsService {
+  _BrokenInsightsService(super.repo);
+
+  @override
+  Future<InsightsReport> buildReport({int months = 12}) async =>
+      throw StateError('report unavailable');
 }

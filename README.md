@@ -25,17 +25,16 @@ composable Greeting(name) {
 | `packages/flx`     | The runtime — hooks engine, router, DI, widgets        |
 | `packages/flxc`    | The compiler — lexer, parser, codegen, CLI, watch mode |
 | `apps/ledger`      | **Ledger** — the flagship app, an expense tracker      |
-| `example`          | A small app exercising every DSL feature               |
 | `tools/vscode-flx` | Syntax highlighting for `.flx`                         |
 
 ## Getting started
 
 ```bash
-make setup     # fetch deps for all four packages
+make setup     # fetch deps for all three packages
 make build     # .flx -> .dart, and regenerate routes.g.dart
 make run       # build, then launch Ledger
 make watch     # rebuild on every save
-make test      # 205 tests across compiler, runtime and both apps
+make test      # 210 tests across compiler, runtime and app
 ```
 
 ## The compiler
@@ -62,6 +61,11 @@ flxc file.flx -o out.dart
 Codegen is pinned by golden tests: `packages/flxc/test/fixtures/*.flx` each have
 a committed `.dart.golden`. Accept an intentional change with
 `UPDATE_GOLDENS=1 dart test`, then read the diff before committing it.
+
+Goldens compare **text**, though — the fixtures reference types that do not
+exist and could never compile. Proof that generated Dart actually compiles and
+runs comes from Ledger, which is why every codegen path needs a screen that
+uses it. `useFetch` lives on the Insights screen for exactly that reason.
 
 ## The DSL
 
@@ -142,8 +146,9 @@ val repo = useInject<UserRepository>()
 val vm   = useViewModel<TodosViewModel>()
 ```
 
-Scopes nest and override, which is what lets a widget test swap a repository for
-a fake. See `example/test/app_test.dart`.
+Scopes nest and override, which is what lets a widget test swap a repository
+for a fake — see how `apps/ledger/test/app_test.dart` replaces `InsightsService`
+with a failing one to drive the error branch of `useFetch`.
 
 ### Routing
 
@@ -177,9 +182,9 @@ Domains capability plus `/.well-known/apple-app-site-association`.
 
 ## Status
 
-Production-solid for in-house use: 205 tests, real diagnostics, watch mode, and
-two apps that build for web, iOS, Android and macOS — including
-[Ledger](apps/ledger), a complete expense tracker written entirely in the DSL.
+Production-solid for in-house use: 210 tests, real diagnostics, watch mode, and
+[Ledger](apps/ledger) — a complete expense tracker written entirely in the DSL,
+building for web, iOS, Android and macOS.
 
 Not published to pub.dev, and not yet documented for outside contributors.
 That is the deliberate scope: the bar is "trustworthy for our own work", not

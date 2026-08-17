@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flx/flx.dart';
 import '../data/overview_view_models.dart';
 import '../data/ledger_repository.dart';
+import 'insights.dart';
 
 class BudgetRow extends Composable {
   const BudgetRow({required this.line, super.key});
@@ -112,6 +113,9 @@ class DashboardScreen extends Composable {
             nav.toPath("/categories");
           }),
         ].row(gap: 8),
+        Button("Insights", () {
+          nav.to(InsightsScreen());
+        }),
       ],
     );
   }
