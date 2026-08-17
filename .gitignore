@@ -1,0 +1,22 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+pubspec.lock
+*.iml
+
+# flxc output — generated from .flx, never hand-edited
+*.g.dart
+!**/routes.g.dart.golden
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# macOS
+.DS_Store
+
+# Node (legacy prototype transpiler)
+node_modules/

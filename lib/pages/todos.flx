@@ -1,0 +1,24 @@
+@page("/todos")
+composable TodosScreen {
+  val nav     = useNavigator()
+  val todos   = useState(["Learn flx", "Ship the transpiler", "Publish to pub.dev"])
+  val showTip = useState(true)
+
+  Column(padding: 16, gap: 12, main: .center) {
+    Text("Todos", style: .title)
+    if (showTip.value) {
+      Text("This line is rendered by DSL if/else", style: .caption)
+    } else {
+      Text("Tip hidden — else branch works too", style: .caption)
+    }
+    for (todo in todos.value) {
+      Text("• ${todo}")
+    }
+    Button("Toggle tip") {
+      showTip.value = !showTip.value
+    }
+    Button("Back") {
+      nav.pop()
+    }
+  }
+}
