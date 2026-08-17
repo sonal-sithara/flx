@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flxc/flxc.dart';
+import 'package:flx_compiler/flx_compiler.dart';
 import 'package:test/test.dart';
 
 /// Golden tests: every `test/fixtures/*.flx` is transpiled and compared to

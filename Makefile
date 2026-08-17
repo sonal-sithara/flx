@@ -1,6 +1,6 @@
 .PHONY: help setup build watch test analyze run clean ci lsp lsp-build vscode-test
 
-FLXC   := dart run packages/flxc/bin/flxc.dart
+FLXC   := dart run packages/flx_compiler/bin/flxc.dart
 PAGES  := apps/ledger/lib/pages
 INTEROP := apps/interop/lib/pages
 
@@ -20,7 +20,7 @@ help:
 	@echo "  make clean     Remove generated Dart and build output"
 
 setup:
-	cd packages/flxc    && dart pub get
+	cd packages/flx_compiler    && dart pub get
 	cd packages/flx_lsp && dart pub get
 	cd packages/flx_runtime     && flutter pub get
 	cd apps/ledger      && flutter pub get
@@ -34,13 +34,13 @@ watch:
 	@$(FLXC) watch $(PAGES)
 
 test:
-	cd packages/flxc    && dart test
+	cd packages/flx_compiler    && dart test
 	cd packages/flx_lsp && dart test
 	cd packages/flx_runtime     && flutter test
 	cd apps/ledger      && flutter test
 
 analyze:
-	cd packages/flxc    && dart analyze
+	cd packages/flx_compiler    && dart analyze
 	cd packages/flx_lsp && dart analyze
 	cd packages/flx_runtime     && flutter analyze
 	cd apps/ledger      && flutter analyze

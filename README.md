@@ -29,7 +29,7 @@ composable Greeting(name) {
 | Path               | What it is                                            |
 | ------------------ | ----------------------------------------------------- |
 | `packages/flx_runtime` | The runtime — hooks engine, router, DI, widgets    |
-| `packages/flxc`        | The compiler — lexer, parser, codegen, CLI, watch  |
+| `packages/flx_compiler`        | The compiler — lexer, parser, codegen, CLI, watch  |
 | `packages/flx_lsp`     | The language server — diagnostics, completion      |
 | `apps/ledger`          | **Ledger** — the flagship app, an expense tracker  |
 | `apps/interop`         | Compile target proving flx composes with the ecosystem |
@@ -93,7 +93,7 @@ in the `.flx`. That is a heuristic and says so — a name appearing once is
 certain, a mismatch is labelled *located by name*, and anything unmappable
 reports the generated location rather than guessing.
 
-Codegen is pinned by golden tests: `packages/flxc/test/fixtures/*.flx` each have
+Codegen is pinned by golden tests: `packages/flx_compiler/test/fixtures/*.flx` each have
 a committed `.dart.golden`. Accept an intentional change with
 `UPDATE_GOLDENS=1 dart test`, then read the diff before committing it.
 

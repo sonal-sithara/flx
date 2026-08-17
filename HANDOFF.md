@@ -45,23 +45,28 @@ differ.
 
 ## 2. Publish the Dart packages
 
-Order matters: `flx_lsp` depends on `flxc` by version, so `flxc` must exist on
-pub.dev first.
+Order matters: `flx_lsp` depends on `flx_compiler` by version, so
+`flx_compiler` must exist on pub.dev first.
 
 ```bash
 dart pub login          # once
 
-cd packages/flxc        && dart pub publish
-cd ../flx_runtime       && flutter pub publish
-cd ../flx_lsp           && dart pub publish
+cd packages/flx_compiler && dart pub publish
+cd ../flx_runtime        && flutter pub publish
+cd ../flx_lsp            && dart pub publish
 ```
 
-`--dry-run` is clean on all three. Between publishing `flxc` and `flx_lsp`,
-pub.dev needs a minute to index.
+`--dry-run` is clean on all three. Between publishing `flx_compiler` and
+`flx_lsp`, pub.dev needs a minute to index.
 
-**Names:** `flxc` and `flx_lsp` are free. The runtime publishes as
-`flx_runtime` — `flx` belongs to an unrelated 2018 package for Flutter's old
-bundle format, and pub.dev never reclaims names.
+**Names.** The three packages are `flx_runtime`, `flx_compiler` and `flx_lsp`.
+The command is still `flxc` — `dart pub global activate flx_compiler` installs
+it, because the command name comes from `bin/flxc.dart` rather than from the
+package. The project, the DSL and the `.flx` extension are all still flx.
+
+`flx` itself belongs to an unrelated 2018 package for Flutter's old bundle
+format, and pub.dev never reclaims names, which is the whole reason the
+packages carry a suffix.
 
 `packages/flx_lsp/pubspec_overrides.yaml` keeps local builds pointing at the
 sibling directory. Pub ignores it when publishing, so it does not need

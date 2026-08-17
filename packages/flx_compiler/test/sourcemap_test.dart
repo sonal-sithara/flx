@@ -1,4 +1,4 @@
-import 'package:flxc/flxc.dart';
+import 'package:flx_compiler/flx_compiler.dart';
 import 'package:test/test.dart';
 
 /// The mapper is a heuristic, so these tests pin down both what it gets right

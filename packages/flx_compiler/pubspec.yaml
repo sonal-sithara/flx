@@ -1,4 +1,4 @@
-name: flxc
+name: flx_compiler
 description: >-
   The flx compiler. Transpiles .flx DSL files into Flutter Dart source,
   and generates the route table from @page annotations.
@@ -10,6 +10,11 @@ topics: ['flutter', 'dsl', 'codegen', 'compiler']
 
 environment:
   sdk: ^3.6.0
+
+# The package is flx_compiler for consistency with flx_runtime and flx_lsp,
+# but the command has always been `flxc` and stays that way.
+executables:
+  flxc: flxc
 
 # Zero runtime dependencies, by design. Everything below is dev-only.
 dev_dependencies:

@@ -1,4 +1,4 @@
-import 'package:flxc/flxc.dart';
+import 'package:flx_compiler/flx_compiler.dart';
 
 import 'documents.dart';
 

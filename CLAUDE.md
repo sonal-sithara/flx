@@ -40,7 +40,7 @@ the claim stays true.
 
 Monorepo with path dependencies — no melos, no workspace tooling.
 
-- `packages/flxc/` — the compiler, pure Dart, zero runtime deps.
+- `packages/flx_compiler/` — the compiler, pure Dart, zero runtime deps.
   `lexer.dart` → `parser.dart` → `codegen.dart`, with `diagnostics.dart` +
   `source.dart` providing `file:line:col` errors with a caret. `watcher.dart`
   is watch mode; `bin/flxc.dart` is the CLI.
@@ -127,7 +127,7 @@ wrap is covered by the transaction form's two route composables.)
 Codegen changes must be reflected in goldens:
 
 ```bash
-cd packages/flxc && UPDATE_GOLDENS=1 dart test   # then READ the diff
+cd packages/flx_compiler && UPDATE_GOLDENS=1 dart test   # then READ the diff
 ```
 
 Error messages are tested like features in `test/error_test.dart` — message,

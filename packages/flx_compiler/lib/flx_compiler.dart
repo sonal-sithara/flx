@@ -22,7 +22,7 @@
 ///
 /// Errors are always [FlxError], which carries a [Span] and renders with a
 /// caret and a hint. Everything else is a bug.
-library flxc;
+library flx_compiler;
 
 /// The syntax tree. Stable enough to build tooling on, and what the language
 /// server's outline, hover and go-to-definition read.

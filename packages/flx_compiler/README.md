@@ -40,7 +40,7 @@ reports the generated location rather than guessing.
 ## As a library
 
 ```dart
-import 'package:flxc/flxc.dart';
+import 'package:flx_compiler/flx_compiler.dart';
 
 final source = Source('screen.flx', text);
 final ast    = Parser.parse(source);   // throws FlxError

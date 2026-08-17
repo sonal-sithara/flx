@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flxc/flxc.dart';
+import 'package:flx_compiler/flx_compiler.dart';
 
 const _usage = '''
 flxc — the flx compiler

@@ -19,7 +19,7 @@ dependencies:
   # A version constraint rather than a path, because a published package
   # cannot ship one. pubspec_overrides.yaml points it back at the sibling
   # directory for local work; pub ignores that file when publishing.
-  flxc: ^0.1.0
+  flx_compiler: ^0.1.0
 
 dev_dependencies:
   test: ^1.25.0

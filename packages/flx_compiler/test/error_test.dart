@@ -1,4 +1,4 @@
-import 'package:flxc/flxc.dart';
+import 'package:flx_compiler/flx_compiler.dart';
 import 'package:test/test.dart';
 
 /// Error messages are a feature, so they get tested like one: the right

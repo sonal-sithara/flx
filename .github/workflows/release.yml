@@ -27,7 +27,7 @@ jobs:
           sdk: stable
 
       - run: dart pub get
-        working-directory: packages/flxc
+        working-directory: packages/flx_compiler
       - run: dart pub get
         working-directory: packages/flx_lsp
 
