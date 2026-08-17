@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flx:
-    path: ../../packages/flx
+  flx_runtime:
+    path: ../../packages/flx_runtime
 
   # App-layer dependencies only. The flx runtime itself stays dependency-free.
   # Both are Dart/Flutter team packages, and both sit behind an interface:

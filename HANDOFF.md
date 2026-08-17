@@ -1,0 +1,142 @@
+# Publishing handoff
+
+Everything that could be done without an account or a remote is done. What
+remains needs credentials only you have.
+
+Work through this top to bottom; each step assumes the ones above it.
+
+---
+
+## 0. Replace the placeholder repository URL
+
+Every package points at `https://github.com/sonalsithara/flx`, which is a
+guess derived from your email. If your GitHub account or repository name
+differs, fix it before anything else — pub.dev records it permanently on the
+listing.
+
+```bash
+grep -rln 'github.com/sonalsithara/flx' \
+  packages/*/pubspec.yaml packages/*/README.md packages/*/CHANGELOG.md \
+  tools/vscode-flx/package.json
+```
+
+Replace in all of them, then re-run `make ci`.
+
+---
+
+## 1. Create the repository and push
+
+```bash
+gh repo create flx --public --source=. --remote=origin --push
+# or, by hand:
+#   git remote add origin git@github.com:<you>/flx.git
+#   git push -u origin main
+```
+
+CI runs on the first push: `.github/workflows/ci.yml` analyzes every package,
+transpiles every `.flx`, fails if committed Dart is stale relative to its
+source, runs all 343 tests, and builds Ledger for web and macOS.
+
+**Check it goes green before continuing.** The workflows have never run —
+they are written against `make`, which does work locally, but CI runners
+differ.
+
+---
+
+## 2. Publish the Dart packages
+
+Order matters: `flx_lsp` depends on `flxc` by version, so `flxc` must exist on
+pub.dev first.
+
+```bash
+dart pub login          # once
+
+cd packages/flxc        && dart pub publish
+cd ../flx_runtime       && flutter pub publish
+cd ../flx_lsp           && dart pub publish
+```
+
+`--dry-run` is clean on all three. Between publishing `flxc` and `flx_lsp`,
+pub.dev needs a minute to index.
+
+**Names:** `flxc` and `flx_lsp` are free. The runtime publishes as
+`flx_runtime` — `flx` belongs to an unrelated 2018 package for Flutter's old
+bundle format, and pub.dev never reclaims names.
+
+`packages/flx_lsp/pubspec_overrides.yaml` keeps local builds pointing at the
+sibling directory. Pub ignores it when publishing, so it does not need
+removing.
+
+---
+
+## 3. Release the VS Code extension
+
+Tag a version and the release workflow does the rest:
+
+```bash
+git tag v0.1.0 && git push --tags
+```
+
+`.github/workflows/release.yml` compiles `flx_lsp` for darwin-arm64,
+darwin-x64, linux-x64 and win32-x64, packages one VSIX per platform with the
+matching binary inside, and attaches all four to the GitHub release.
+
+That is enough for people to install by hand:
+
+```bash
+code --install-extension flx-darwin-arm64.vsix
+```
+
+### For the Marketplace as well
+
+1. Create an Azure DevOps organisation, then a Marketplace publisher at
+   <https://marketplace.visualstudio.com/manage>.
+2. Set `"publisher"` in `tools/vscode-flx/package.json` to that publisher ID —
+   it is currently `flx`, which is almost certainly not yours.
+3. Create a Personal Access Token with **Marketplace → Manage** scope.
+4. Add it as the repository secret `VSCE_PAT`.
+5. Append a publish step to the `extension` job:
+
+```yaml
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: tools/vscode-flx
+        run: npx --yes @vscode/vsce publish --target ${{ matrix.target }} --pat $VSCE_PAT
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+```
+
+Also worth adding before the first Marketplace release: a 128×128 `icon.png`
+and an `icon` field in `package.json`. Listings without one look abandoned.
+
+---
+
+## What is untested, and will bite first
+
+**The VS Code client has never run.** The server has 73 tests driven through
+its real protocol framing, and the compiled binary is verified over stdio. The
+extension that launches it — `tools/vscode-flx/client/extension.js` — has
+never been loaded by VS Code. Try it locally before tagging:
+
+```bash
+npm install --prefix tools/vscode-flx
+ln -s "$PWD/tools/vscode-flx" ~/.vscode/extensions/flx
+```
+
+Reload the window, open a `.flx`, and check the **flx** output channel.
+
+**The workflows have never run.** Both are plausible and neither is proven.
+
+**`vsce package` has never run here.** Expect it to complain about a missing
+icon, repository field, or LICENSE reference on the first attempt.
+
+---
+
+## After publishing
+
+- `dart pub publish` is irreversible. A published version can be retracted but
+  never replaced, so let CI go green first.
+- pub.dev scores packages within an hour. Expect points off for the API being
+  new and for example coverage.
+- Version numbers are all `0.1.0`. Below 1.0, semver treats every minor bump
+  as potentially breaking, which is honest for where this is.

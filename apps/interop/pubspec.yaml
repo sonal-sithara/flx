@@ -12,8 +12,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flx:
-    path: ../../packages/flx
+  flx_runtime:
+    path: ../../packages/flx_runtime
 
   # Deliberately the three most popular state-management packages, all with
   # builder-shaped widget APIs that the DSL has to be able to express.

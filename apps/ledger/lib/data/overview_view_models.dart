@@ -1,4 +1,4 @@
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 
 import '../domain/models.dart';
 import '../domain/money.dart';

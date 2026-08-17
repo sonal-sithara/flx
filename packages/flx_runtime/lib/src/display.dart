@@ -67,7 +67,7 @@ class Dot extends StatelessWidget {
 /// A rounded label.
 ///
 /// Named `Pill` rather than `Badge` because every generated screen imports
-/// both `package:flutter/material.dart` and `package:flx/flx.dart`, and
+/// both `package:flutter/material.dart` and `package:flx_runtime/flx_runtime.dart`, and
 /// Material already exports a `Badge`.
 class Pill extends StatelessWidget {
   const Pill(this.label, {this.color, super.key});

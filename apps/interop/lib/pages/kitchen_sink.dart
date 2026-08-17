@@ -9,7 +9,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 import 'package:flutter/services.dart' as services;
 
 enum Mode { light, dark }

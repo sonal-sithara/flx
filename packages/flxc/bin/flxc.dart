@@ -16,7 +16,7 @@ Usage:
 
 Options:
   --runtime <import>          Import used for the flx runtime
-                              (default: package:flx/flx.dart)
+                              (default: package:flx_runtime/flx_runtime.dart)
   -h, --help                  Show this help
 ''';
 
@@ -28,11 +28,11 @@ Future<void> main(List<String> argv) async {
     return;
   }
 
-  var runtimeImport = 'package:flx/flx.dart';
+  var runtimeImport = 'package:flx_runtime/flx_runtime.dart';
   final runtimeIndex = args.indexOf('--runtime');
   if (runtimeIndex >= 0) {
     if (runtimeIndex + 1 >= args.length) {
-      _fail('--runtime needs a value, e.g. --runtime package:flx/flx.dart');
+      _fail('--runtime needs a value, e.g. --runtime package:flx_runtime/flx_runtime.dart');
     }
     runtimeImport = args[runtimeIndex + 1];
     args.removeRange(runtimeIndex, runtimeIndex + 2);

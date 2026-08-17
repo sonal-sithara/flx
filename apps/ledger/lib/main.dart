@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 
 import 'data/insights.dart';
 import 'data/ledger_repository.dart';

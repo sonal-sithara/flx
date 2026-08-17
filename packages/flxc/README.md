@@ -44,7 +44,7 @@ import 'package:flxc/flxc.dart';
 
 final source = Source('screen.flx', text);
 final ast    = Parser.parse(source);   // throws FlxError
-final dart   = CodeGenerator(ast, runtimeImport: 'package:flx/flx.dart')
+final dart   = CodeGenerator(ast, runtimeImport: 'package:flx_runtime/flx_runtime.dart')
     .generate();
 ```
 

@@ -3,7 +3,7 @@
 /// Everything here is built on the Flutter SDK and nothing else: the hooks
 /// engine, the router, the DI container and the modifier chains are all
 /// local code you can read in an afternoon.
-library flx;
+library flx_runtime;
 
 export 'src/context_hooks.dart';
 export 'src/core.dart';

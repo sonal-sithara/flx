@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 import 'package:ledger/data/insights.dart';
 import 'package:ledger/data/ledger_repository.dart';
 import 'package:ledger/data/security.dart';

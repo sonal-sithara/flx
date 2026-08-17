@@ -9,7 +9,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 
 class Badge extends Composable {
   const Badge({required this.label, this.tone = Colors.grey, super.key});

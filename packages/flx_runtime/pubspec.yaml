@@ -1,4 +1,4 @@
-name: flx
+name: flx_runtime
 description: >-
   The flx runtime: a hooks engine, fluent modifiers, layout extensions,
   a router and a DI container for Flutter. Zero pub dependencies.

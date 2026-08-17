@@ -9,7 +9,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shimmer/shimmer.dart';

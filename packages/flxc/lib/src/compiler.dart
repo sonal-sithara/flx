@@ -21,7 +21,7 @@ class CompiledFile {
 
 /// Compiles `.flx` sources to Dart and generates the route table.
 class Compiler {
-  Compiler({this.runtimeImport = 'package:flx/flx.dart'});
+  Compiler({this.runtimeImport = 'package:flx_runtime/flx_runtime.dart'});
 
   final String runtimeImport;
 

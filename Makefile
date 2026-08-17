@@ -21,7 +21,7 @@ help:
 setup:
 	cd packages/flxc    && dart pub get
 	cd packages/flx_lsp && dart pub get
-	cd packages/flx     && flutter pub get
+	cd packages/flx_runtime     && flutter pub get
 	cd apps/ledger      && flutter pub get
 	cd apps/interop     && flutter pub get
 
@@ -35,13 +35,13 @@ watch:
 test:
 	cd packages/flxc    && dart test
 	cd packages/flx_lsp && dart test
-	cd packages/flx     && flutter test
+	cd packages/flx_runtime     && flutter test
 	cd apps/ledger      && flutter test
 
 analyze:
 	cd packages/flxc    && dart analyze
 	cd packages/flx_lsp && dart analyze
-	cd packages/flx     && flutter analyze
+	cd packages/flx_runtime     && flutter analyze
 	cd apps/ledger      && flutter analyze
 	cd apps/interop     && flutter analyze
 	@$(FLXC) analyze $(PAGES)
@@ -70,4 +70,4 @@ clean:
 	rm -f $(PAGES)/*.dart $(INTEROP)/*.dart
 	rm -rf packages/flx_lsp/build
 	cd apps/ledger  && flutter clean
-	cd packages/flx && flutter clean
+	cd packages/flx_runtime && flutter clean

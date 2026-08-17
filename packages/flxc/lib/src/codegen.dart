@@ -77,7 +77,7 @@ class CodeGenerator {
 
   final FlxFile file;
 
-  /// Import used for the flx runtime, e.g. `package:flx/flx.dart`.
+  /// Import used for the flx runtime, e.g. `package:flx_runtime/flx_runtime.dart`.
   final String runtimeImport;
 
   String generate() {

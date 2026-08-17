@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 
 Widget _stub(Map<String, String> params) => Text(
       params.isEmpty ? 'none' : params.toString(),

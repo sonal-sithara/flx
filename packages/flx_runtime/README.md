@@ -1,8 +1,21 @@
-# flx
+# flx_runtime
 
 The runtime half of [flx](https://github.com/sonalsithara/flx), a
 Compose-style DSL for Flutter. **Zero pub dependencies** — Flutter and nothing
 else.
+
+```yaml
+dependencies:
+  flx_runtime: ^0.1.0
+```
+
+```dart
+import 'package:flx_runtime/flx_runtime.dart';
+```
+
+Named `flx_runtime` because `flx` on pub.dev belongs to an unrelated 2018
+package for Flutter's old bundle format. The DSL, the file extension and the
+project are all still called flx.
 
 Usable on its own, without the DSL: the hooks, widgets and DI container are
 ordinary Dart.

@@ -12,13 +12,13 @@ import 'package:test/test.dart';
 ///
 /// So this test reads the runtime and fails when the two disagree.
 void main() {
-  final runtime = Directory('../flx/lib/src');
+  final runtime = Directory('../flx_runtime/lib/src');
 
   late String source;
 
   setUpAll(() {
     expect(runtime.existsSync(), isTrue,
-        reason: 'expected the flx runtime beside flx_lsp');
+        reason: 'expected packages/flx_runtime beside flx_lsp');
     source = runtime
         .listSync()
         .whereType<File>()

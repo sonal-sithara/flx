@@ -44,7 +44,8 @@ Monorepo with path dependencies — no melos, no workspace tooling.
   `lexer.dart` → `parser.dart` → `codegen.dart`, with `diagnostics.dart` +
   `source.dart` providing `file:line:col` errors with a caret. `watcher.dart`
   is watch mode; `bin/flxc.dart` is the CLI.
-- `packages/flx/` — the runtime. Own hooks engine (`core.dart`, NO
+- `packages/flx_runtime/` — the runtime (published as `flx_runtime`, since
+  `flx` is taken on pub.dev). Own hooks engine (`core.dart`, NO
   flutter_hooks), context hooks, DI (`di.dart`), fluent modifiers, layout
   extensions, router, styles.
 - `apps/ledger/` — **Ledger**, the flagship app (expense tracker). `domain/` is
@@ -73,7 +74,7 @@ make run        # launch Ledger
 
 ## Key invariants
 
-- Zero pub dependencies in the runtime (`packages/flx`). Flutter and nothing
+- Zero pub dependencies in the runtime (`packages/flx_runtime`). Flutter and nothing
   else. `flxc` is dev tooling and may take dev-only deps.
 - `val x = useFetch(...)` must auto-generate `AsyncValue.when` loading/error
   wrapping, and `x` is the unwrapped data inside the UI.
@@ -107,7 +108,7 @@ Two rules, both learned the hard way:
   `tokenizeTolerant` re-lexes the prefix when even the lexer fails (an
   unterminated string is the most common state of all).
 - **The catalog is hand-written and will rot.** `catalog_drift_test.dart` reads
-  packages/flx and fails when a public widget or hook is undocumented. If you
+  packages/flx_runtime and fails when a public widget or hook is undocumented. If you
   add one to the runtime, document it — or add it to `notWidgets` deliberately.
 
 `shorthandValues` in the catalog must agree with `_shorthandTypes` in flxc's

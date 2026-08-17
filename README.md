@@ -28,11 +28,12 @@ composable Greeting(name) {
 
 | Path               | What it is                                            |
 | ------------------ | ----------------------------------------------------- |
-| `packages/flx`     | The runtime — hooks engine, router, DI, widgets        |
-| `packages/flxc`    | The compiler — lexer, parser, codegen, CLI, watch mode |
-| `packages/flx_lsp` | The language server — diagnostics, completion, hover   |
-| `apps/ledger`      | **Ledger** — the flagship app, an expense tracker      |
-| `tools/vscode-flx` | Syntax highlighting for `.flx`                         |
+| `packages/flx_runtime` | The runtime — hooks engine, router, DI, widgets    |
+| `packages/flxc`        | The compiler — lexer, parser, codegen, CLI, watch  |
+| `packages/flx_lsp`     | The language server — diagnostics, completion      |
+| `apps/ledger`          | **Ledger** — the flagship app, an expense tracker  |
+| `apps/interop`         | Compile target proving flx composes with the ecosystem |
+| `tools/vscode-flx`     | VS Code extension: highlighting plus the language server |
 
 ## Getting started
 

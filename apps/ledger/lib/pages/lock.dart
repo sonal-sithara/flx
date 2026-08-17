@@ -9,7 +9,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'package:flx/flx.dart';
+import 'package:flx_runtime/flx_runtime.dart';
 import '../data/session_view_models.dart';
 
 class Key extends Composable {
