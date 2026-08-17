@@ -1,0 +1,19 @@
+name: flx_lsp
+description: >-
+  Language server for .flx — diagnostics, completion, hover, go-to-definition
+  and document symbols, speaking LSP over stdio.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  # The compiler is the language model: its lexer, parser and spans are what
+  # the server reasons about. No third-party dependencies, same as everything
+  # else here — LSP framing is a Content-Length header and JSON.
+  flxc:
+    path: ../flxc
+
+dev_dependencies:
+  test: ^1.25.0

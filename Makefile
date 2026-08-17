@@ -1,4 +1,4 @@
-.PHONY: help setup build watch test analyze run clean ci
+.PHONY: help setup build watch test analyze run clean ci lsp lsp-build
 
 FLXC   := dart run packages/flxc/bin/flxc.dart
 PAGES  := apps/ledger/lib/pages
@@ -12,13 +12,16 @@ help:
 	@echo "  make test      Run all tests (compiler, runtime, app)"
 	@echo "  make analyze   Analyze every package"
 	@echo "  make run       Build, then launch Ledger"
+	@echo "  make lsp       Run the language server (editors do this for you)"
+	@echo "  make lsp-build Compile the language server to a native binary"
 	@echo "  make ci        analyze + build + stale-codegen check + test"
 	@echo "  make clean     Remove generated Dart and build output"
 
 setup:
-	cd packages/flxc && dart pub get
-	cd packages/flx  && flutter pub get
-	cd apps/ledger   && flutter pub get
+	cd packages/flxc    && dart pub get
+	cd packages/flx_lsp && dart pub get
+	cd packages/flx     && flutter pub get
+	cd apps/ledger      && flutter pub get
 
 build:
 	@$(FLXC) build $(PAGES)
@@ -27,14 +30,26 @@ watch:
 	@$(FLXC) watch $(PAGES)
 
 test:
-	cd packages/flxc && dart test
-	cd packages/flx  && flutter test
-	cd apps/ledger   && flutter test
+	cd packages/flxc    && dart test
+	cd packages/flx_lsp && dart test
+	cd packages/flx     && flutter test
+	cd apps/ledger      && flutter test
 
 analyze:
-	cd packages/flxc && dart analyze
-	cd packages/flx  && flutter analyze
-	cd apps/ledger   && flutter analyze
+	cd packages/flxc    && dart analyze
+	cd packages/flx_lsp && dart analyze
+	cd packages/flx     && flutter analyze
+	cd apps/ledger      && flutter analyze
+	@$(FLXC) analyze $(PAGES)
+
+lsp:
+	cd packages/flx_lsp && dart run bin/flx_lsp.dart
+
+# A compiled server starts in milliseconds instead of seconds. Point
+# flx.server.path at the result.
+lsp-build:
+	cd packages/flx_lsp && dart compile exe bin/flx_lsp.dart -o build/flx_lsp
+	@echo "built packages/flx_lsp/build/flx_lsp"
 
 # A dirty tree after `build` means someone committed a .dart without
 # regenerating it from its .flx.
@@ -48,5 +63,6 @@ run: build
 
 clean:
 	rm -f $(PAGES)/*.dart
+	rm -rf packages/flx_lsp/build
 	cd apps/ledger  && flutter clean
 	cd packages/flx && flutter clean

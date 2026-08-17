@@ -24,17 +24,18 @@ composable Greeting(name) {
 | ------------------ | ----------------------------------------------------- |
 | `packages/flx`     | The runtime — hooks engine, router, DI, widgets        |
 | `packages/flxc`    | The compiler — lexer, parser, codegen, CLI, watch mode |
+| `packages/flx_lsp` | The language server — diagnostics, completion, hover   |
 | `apps/ledger`      | **Ledger** — the flagship app, an expense tracker      |
 | `tools/vscode-flx` | Syntax highlighting for `.flx`                         |
 
 ## Getting started
 
 ```bash
-make setup     # fetch deps for all three packages
+make setup     # fetch deps for all four packages
 make build     # .flx -> .dart, and regenerate routes.g.dart
 make run       # build, then launch Ledger
 make watch     # rebuild on every save
-make test      # 210 tests across compiler, runtime and app
+make test      # 296 tests across compiler, server, runtime and app
 ```
 
 ## The compiler
@@ -55,8 +56,34 @@ error: composable 'greeting' must start with a capital letter
 flxc build [dir]     # transpile + generate routes  (default: lib/pages)
 flxc watch [dir]     # rebuild on change, ~15ms, survives syntax errors
 flxc check [dir]     # transpile without writing — for CI
+flxc analyze [dir]   # build, then report Dart's type errors on the .flx
 flxc file.flx -o out.dart
 ```
+
+### Type errors land on the .flx
+
+flxc checks syntax; Dart is still the type checker. Left alone, that means
+every type error points into a generated file you must never edit:
+
+```
+error • The method 'setSerch' isn't defined … • lib/pages/transactions.dart:47:14
+```
+
+`flxc analyze` maps it back:
+
+```
+error: The method 'setSerch' isn't defined for the type 'TransactionsViewModel'.
+  --> apps/ledger/lib/pages/transactions.flx:19:10
+   |
+19 |       vm.setSerch(text)
+   |          ^^^^^^^^
+```
+
+It works by occurrence: code generation emits user identifiers in source order
+and never reorders them, so the *n*th `foo` in the `.dart` is the *n*th `foo`
+in the `.flx`. That is a heuristic and says so — a name appearing once is
+certain, a mismatch is labelled *located by name*, and anything unmappable
+reports the generated location rather than guessing.
 
 Codegen is pinned by golden tests: `packages/flxc/test/fixtures/*.flx` each have
 a committed `.dart.golden`. Accept an intentional change with
@@ -177,12 +204,37 @@ Domains capability plus `/.well-known/apple-app-site-association`.
   is handed to Dart verbatim — Dart remains the type checker. Errors in an
   expression surface as Dart errors in the generated file.
 - **One root widget per composable**, and `if`/`for` cannot be that root.
-- **No language server yet** — highlighting only, no completion or inline
-  errors.
+- **No rename, code actions or formatting** in the language server, and no
+  member completion inside `${...}` — that needs Dart type information the
+  server does not have.
+
+## The editor
+
+`packages/flx_lsp` is a language server speaking LSP over stdio. Everything it
+answers comes from flxc's own lexer, parser and spans, so the editor can never
+disagree with the build.
+
+| | |
+| --- | --- |
+| Syntax diagnostics | Instant, per keystroke — same message, position and hint as the build |
+| Type errors | On save, mapped back onto the `.flx` |
+| Completion | Hooks, widgets, arguments, enum shorthands, `Icons`, local `val`s, composables |
+| Hover | Signatures and docs; the route for a `@page`; the expression behind a `val` |
+| Go to definition | Composables across files, `val`s, parameters — including from inside `${...}` |
+| Outline & workspace symbols | Composables with their bindings nested |
+
+The interesting constraint: the parser is fatally strict, and a file you are
+typing into does not parse. So completion reads the **token stream**, not the
+AST, and falls back to a truncated tokenization when even the lexer fails on a
+half-typed string. Navigation and the outline use the last *successful* parse
+rather than emptying themselves on every keystroke.
+
+Setup is in [tools/vscode-flx](tools/vscode-flx).
 
 ## Status
 
-Production-solid for in-house use: 210 tests, real diagnostics, watch mode, and
+Production-solid for in-house use: 296 tests, a language server, real
+diagnostics that land on the line you wrote, watch mode, and
 [Ledger](apps/ledger) — a complete expense tracker written entirely in the DSL,
 building for web, iOS, Android and macOS.
 

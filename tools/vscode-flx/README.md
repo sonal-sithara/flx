@@ -1,32 +1,79 @@
 # flx — VS Code support
 
-Syntax highlighting, bracket matching and comment toggling for `.flx` files.
+Syntax highlighting plus a language server: diagnostics, completion, hover,
+go-to-definition and an outline for `.flx`.
 
-## Install locally
-
-Symlink it into your VS Code extensions folder and reload the window:
+## Install
 
 ```bash
+npm install --prefix tools/vscode-flx
 ln -s "$PWD/tools/vscode-flx" ~/.vscode/extensions/flx
 ```
 
-Open any `.flx` file — the status bar should read **flx**.
+Reload the window and open a `.flx` file. The status bar should read **flx**,
+and the *flx* output channel should show the server starting.
 
-## What it highlights
+By default the server runs from source with `dart run`, which takes a second
+or two to start but always matches the checkout. For a faster start:
 
-| Element                                | Scope                          |
-| -------------------------------------- | ------------------------------ |
-| `composable Name`, `val x`, `import`   | declarations                   |
-| `@page("/route")`                       | annotation                     |
-| `if` / `else` / `for` / `in`            | control flow                   |
-| `useState`, `useFetch`, `use*`          | hooks                          |
-| `Column` / `Row` / `Stack` / `Wrap`     | layout widgets (children block)|
-| Any other `Capitalised` identifier      | widget                         |
-| `style: .title`                         | enum shorthand                 |
-| `"text ${expr}"`                        | strings with interpolation     |
+```bash
+make lsp-build          # compiles packages/flx_lsp to a native executable
+```
 
-## Not included yet
+then point `flx.server.path` at the binary it prints.
 
-A language server — so no go-to-definition, completion or inline errors.
-Compile errors still surface with precise `file:line:col` from `flxc watch`,
-which VS Code's terminal linkifies. An LSP is the natural next step.
+## What you get
+
+| Feature | Notes |
+| --- | --- |
+| Syntax diagnostics | Instant, on every keystroke, straight from flxc — same message, line, column and hint as the build |
+| **Dart type errors** | On save. Reported against the `.flx` that produced them, not the generated `.dart` |
+| Completion | Hooks, widgets, argument names, enum shorthands, `Icons`, local `val`s and composables |
+| Hover | Signature and documentation for hooks and widgets; route for a `@page`; expression for a `val` |
+| Go to definition | Composables across files, `val`s and parameters — including from inside `${...}` |
+| Outline | Composables with their bindings nested, in the breadcrumb and symbol list |
+| Workspace symbols | `Cmd-T` finds any composable by name |
+
+Completion works on files that **don't parse**, which is most of them while
+you type. It reads the token stream rather than the AST.
+
+## Settings
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `flx.server.path` | `""` | A compiled `flx_lsp` binary. Empty means run from source |
+| `flx.server.packagePath` | `packages/flx_lsp` | Where the server package lives |
+| `flx.semanticDiagnostics` | `true` | Report Dart type errors against `.flx` |
+| `flx.trace.server` | `off` | Log LSP traffic to the output channel |
+
+**`flx.semanticDiagnostics` writes files.** To type-check, the server has to
+transpile the folder on save, so generated `.dart` files are written as a side
+effect — the same ones `flxc build` produces. Set it to `false` if you would
+rather the editor never wrote anything; syntax diagnostics are unaffected.
+
+## How type errors get back to the .flx
+
+Dart reports errors in generated code, at line numbers that correspond to
+nothing you wrote. flxc maps them back by occurrence: code generation emits
+user identifiers in source order and never reorders them, so the *n*th `foo`
+in the `.dart` is the *n*th `foo` in the `.flx`.
+
+That is a heuristic and is treated as one. When an identifier appears exactly
+once, the match is certain. When counts differ — a composable name becomes both
+a class and a constructor, for instance — the diagnostic says *located by name*
+and includes the generated position. When nothing matches, it reports the
+generated location rather than guessing.
+
+The same machinery is available in the terminal:
+
+```bash
+flxc analyze apps/ledger/lib/pages
+```
+
+## Not done
+
+- No rename, no code actions, no formatting.
+- No signature help while typing arguments.
+- Completion inside `${...}` offers local bindings but not their members —
+  that would need Dart type information the server does not have.
+- The extension is not packaged or published; it is symlinked from the repo.

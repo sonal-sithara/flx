@@ -20,3 +20,4 @@ pubspec.lock
 
 # Node (legacy prototype transpiler)
 node_modules/
+packages/flx_lsp/build/

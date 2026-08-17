@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flxc/src/compiler.dart';
+import 'package:flxc/src/dart_analysis.dart';
 import 'package:flxc/src/diagnostics.dart';
 import 'package:flxc/src/source.dart';
 import 'package:flxc/src/watcher.dart';
@@ -13,6 +14,8 @@ Usage:
                               routes.g.dart  (default dir: lib/pages)
   flxc watch [dir]            Same as build, then rebuild on every change
   flxc check [dir]            Transpile without writing — for CI
+  flxc analyze [dir]          Transpile, then run the Dart analyzer and
+                              report its findings against the .flx sources
   flxc <file.flx> [-o out]    Transpile a single file
 
 Options:
@@ -50,6 +53,8 @@ Future<void> main(List<String> argv) async {
         _report(compiler.build(_dirArg(args), write: false), checked: true);
       case 'watch':
         await Watcher(_dirArg(args), compiler).run();
+      case 'analyze':
+        await _analyze(compiler, _dirArg(args));
       default:
         if (!command.endsWith('.flx')) {
           _fail("unknown command '$command'\n\n$_usage");
@@ -77,6 +82,51 @@ void _compileOne(Compiler compiler, String input, List<String> args) {
   final source = Source(input, File(input).readAsStringSync());
   File(output).writeAsStringSync(compiler.compileSource(source));
   stdout.writeln('flxc: $input -> $output');
+}
+
+/// Transpiles, then reports Dart's own findings at .flx locations.
+///
+/// flxc checks syntax; Dart is still the type checker. Without this the author
+/// is sent to a generated file they must never edit.
+Future<void> _analyze(Compiler compiler, String dir) async {
+  compiler.build(dir);
+
+  final diagnostics = await DartAnalysisBridge()
+      .analyze(dir, workingDirectory: _packageRootOf(dir));
+
+  if (diagnostics.isEmpty) {
+    stdout.writeln('flxc: no issues found');
+    return;
+  }
+
+  var errors = 0;
+  var unmapped = 0;
+  for (final diagnostic in diagnostics) {
+    stderr.writeln(diagnostic.render());
+    stderr.writeln();
+    if (diagnostic.isError) errors++;
+    if (!diagnostic.isMapped) unmapped++;
+  }
+
+  final trailer =
+      unmapped == 0 ? '' : ', $unmapped could not be traced to a .flx';
+  stdout.writeln(
+    'flxc: ${diagnostics.length} issue(s), $errors error(s)$trailer',
+  );
+  if (errors > 0) exitCode = 1;
+}
+
+/// Nearest ancestor directory holding a pubspec.yaml, so the analyzer runs
+/// with the package's options and resolved dependencies.
+String? _packageRootOf(String dir) {
+  var current = Directory(dir).absolute;
+  for (var depth = 0; depth < 12; depth++) {
+    if (File('${current.path}/pubspec.yaml').existsSync()) return current.path;
+    final parent = current.parent;
+    if (parent.path == current.path) break;
+    current = parent;
+  }
+  return null;
 }
 
 void _report(BuildResult result, {bool checked = false}) {

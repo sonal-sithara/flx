@@ -17,7 +17,11 @@ Monorepo with path dependencies — no melos, no workspace tooling.
 - `apps/ledger/` — **Ledger**, the flagship app (expense tracker). `domain/` is
   plain Dart, `data/` holds storage + repository + ViewModels, `pages/*.flx`
   are the screens.
-- `tools/vscode-flx/` — TextMate grammar for `.flx`.
+- `packages/flx_lsp/` — the language server. `analysis.dart` caches parses,
+  `completion.dart` is token-based (never AST-based), `catalog.dart` is the
+  hand-written knowledge of hooks and widgets, `semantics.dart` bridges to the
+  Dart analyzer.
+- `tools/vscode-flx/` — TextMate grammar plus the VS Code client.
 
 `lib/pages/*.flx` is the source of truth; generated `.dart` files are never
 hand-edited.
@@ -27,7 +31,7 @@ hand-edited.
 ```bash
 make build      # transpile all .flx + generate routes.g.dart
 make watch      # rebuild Ledger's pages on save
-make test       # 210 tests: compiler goldens, runtime, app
+make test       # 296 tests: compiler goldens, server, runtime, app
 make ci         # analyze + build + stale-codegen check + test
 make run        # launch Ledger
 ```
@@ -56,6 +60,23 @@ make run        # launch Ledger
 - Generated `.dart` is committed and must be regenerated when its `.flx`
   changes — `make ci` fails on a stale tree.
 
+## Working on the language server
+
+Two rules, both learned the hard way:
+
+- **Completion must never depend on a parse.** The parser throws on the first
+  error and a file being typed into is broken by definition — `Column { <here> }`
+  has an empty block, which is a syntax error. Completion reads tokens, and
+  `tokenizeTolerant` re-lexes the prefix when even the lexer fails (an
+  unterminated string is the most common state of all).
+- **The catalog is hand-written and will rot.** `catalog_drift_test.dart` reads
+  packages/flx and fails when a public widget or hook is undocumented. If you
+  add one to the runtime, document it — or add it to `notWidgets` deliberately.
+
+`shorthandValues` in the catalog must agree with `_shorthandTypes` in flxc's
+codegen, or the editor offers a completion the compiler then rejects; there is
+a test for that too.
+
 ## Working on the compiler
 
 Goldens compare generated text only — the fixtures reference undefined types
@@ -83,8 +104,8 @@ line, column and hint. New diagnostics get a test there.
 5. (DONE) `useInject<T>()` DI hook + ViewModel pattern
 6. (DONE) Transpiler golden tests + widget tests for the hooks engine
 7. (DONE) Flagship app — `apps/ledger`, an expense tracker
-8. LSP for `.flx`: diagnostics on save first, then completion and
-   go-to-definition. The parser already carries spans for this.
+8. (DONE) LSP for `.flx` — diagnostics, completion, hover, definition,
+   symbols, plus Dart type errors mapped back onto the `.flx`
 9. Ledger backend: the repository layer is already the seam. Sync, auth and
    multi-device would go behind `Storage`/`LedgerRepository`.
 10. Publish `flx` + `flxc` to pub.dev (needs docs for outside contributors,
@@ -102,5 +123,7 @@ a golden fixture or a runtime test before moving on.
 
 - No pub.dev release, no public contributor docs — the chosen bar is
   "production-solid for in-house use", not "strangers can use it".
-- No LSP. Highlighting only.
+- No rename, code actions, formatting or signature help in the LSP.
+- No member completion inside `${...}` — needs Dart type information.
+- No CI automation and no git remote; `make ci` is run by hand.
 - Dependent `useFetch` chains are a compile error by design; see README.

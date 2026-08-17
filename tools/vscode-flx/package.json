@@ -1,14 +1,19 @@
 {
   "name": "flx",
   "displayName": "flx",
-  "description": "Syntax highlighting for .flx files",
-  "version": "0.1.0",
+  "description": "Language support for .flx — syntax highlighting, diagnostics, completion, hover and go-to-definition",
+  "version": "0.2.0",
   "publisher": "flx",
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
     "Programming Languages"
+  ],
+  "main": "./client/extension.js",
+  "activationEvents": [
+    "onLanguage:flx",
+    "workspaceContains:**/*.flx"
   ],
   "contributes": {
     "languages": [
@@ -30,6 +35,45 @@
         "scopeName": "source.flx",
         "path": "./syntaxes/flx.tmLanguage.json"
       }
+    ],
+    "configuration": {
+      "title": "flx",
+      "properties": {
+        "flx.server.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to a compiled `flx_lsp` executable. Leave empty to run the server from source with `dart run`, which is slower to start but always matches the checkout."
+        },
+        "flx.server.packagePath": {
+          "type": "string",
+          "default": "packages/flx_lsp",
+          "markdownDescription": "Location of the `flx_lsp` package, relative to the workspace root. Only used when `#flx.server.path#` is empty."
+        },
+        "flx.semanticDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Report Dart type errors against the `.flx` that produced them.\n\nOn save this transpiles the folder and runs `dart analyze`, so generated `.dart` files are written as a side effect. Turn it off to keep the editor read-only; syntax diagnostics are unaffected."
+        },
+        "flx.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Log LSP traffic to the flx output channel."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "flx.restartServer",
+        "title": "flx: Restart Language Server"
+      }
     ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }
