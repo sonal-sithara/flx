@@ -79,6 +79,9 @@ class WidgetNode implements Node {
     this.children,
     this.callback,
     this.callbackSpan,
+    this.callbackParams = const [],
+    this.itemVariable,
+    this.indexVariable,
   });
 
   final String name;
@@ -87,13 +90,24 @@ class WidgetNode implements Node {
   @override
   final Span span;
 
-  /// Present for layout widgets with a `{ ... }` block.
+  /// Present for layout and builder widgets with a `{ ... }` block.
   final List<Node>? children;
 
   /// Present for non-layout widgets with a `{ ... }` block — raw Dart
   /// statements forming a callback body.
   final String? callback;
   final Span? callbackSpan;
+
+  /// Names bound by a parameterised callback: `{ value -> ... }`.
+  final List<String> callbackParams;
+
+  /// The element name bound by a builder block: `{ tx in ... }`.
+  final String? itemVariable;
+
+  /// The optional index name: `{ tx, i in ... }`.
+  final String? indexVariable;
+
+  bool get isBuilder => itemVariable != null;
 }
 
 class Arg {

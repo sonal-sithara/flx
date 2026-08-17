@@ -1,0 +1,45 @@
+import "../data/session_view_models.dart"
+
+// One key of the PIN pad.
+composable Key(vm: LockViewModel, digit) {
+  Button(digit) {
+    vm.press(digit)
+  }
+}
+
+@page("/lock")
+composable LockScreen {
+  val vm  = useViewModel<LockViewModel>()
+  val nav = useNavigator()
+
+  Screen(title: "Locked", showBack: false) {
+    Text("Enter your PIN", style: .subtitle)
+    Text("●" * vm.entryLength, style: .title)
+
+    if (vm.message != null) {
+      Text(vm.message!, style: .caption)
+    }
+
+    for (row in const [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]]) {
+      Row(gap: 8, main: .center) {
+        for (digit in row) {
+          Key(vm: vm, digit: digit)
+        }
+      }
+    }
+
+    Row(gap: 8, main: .center) {
+      Button("Clear") {
+        vm.clearEntry()
+      }
+      Key(vm: vm, digit: "0")
+      Button("⌫") {
+        vm.backspace()
+      }
+    }
+
+    Button(vm.isLockedOut ? "Locked out" : "Unlock") {
+      if (vm.submit()) nav.toPath("/");
+    }
+  }
+}

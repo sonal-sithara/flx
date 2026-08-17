@@ -1,0 +1,78 @@
+import "../data/overview_view_models.dart"
+import "../data/ledger_repository.dart"
+
+// One budget line: name, spend against budget, and a bar.
+composable BudgetRow(line: BudgetLine) {
+  Column(gap: 4, cross: .start) {
+    Row(main: .spaceBetween) {
+      Text(line.category.name, style: .body)
+      Text("${line.spent.format()} of ${line.budget!.format()}", style: .caption)
+    }
+    ProgressBar(line.fraction, color: Color(line.category.colorValue), isOver: line.isOver)
+  }
+}
+
+@page("/")
+composable DashboardScreen {
+  val vm  = useViewModel<DashboardViewModel>()
+  val nav = useNavigator()
+
+  Screen(title: "Ledger", subtitle: vm.periodLabel, scrollable: true, actionIcon: .settings, onAction: () => nav.toPath("/settings"), actionTooltip: "Settings", fabIcon: .add, onFab: () => nav.toPath("/transactions/new"), fabLabel: "Add") {
+    Row(main: .spaceBetween) {
+      Button("← Previous") {
+        vm.previousMonth()
+      }
+      Button("Next →") {
+        vm.nextMonth()
+      }
+    }
+
+    Panel {
+      Row(main: .spaceBetween, cross: .start) {
+        Stat(value: vm.spent.format(), label: "Spent")
+        Stat(value: vm.earned.format(), label: "Earned")
+        Stat(value: vm.net.format(showSign: true), label: "Net")
+      }
+    }
+
+    Panel(title: "Net worth") {
+      Text(vm.netWorth.format(), style: .title)
+      for (account in vm.accounts) {
+        Tile(title: account.name, subtitle: account.kind.label, trailing: vm.balanceOf(account.id).format(), onTap: () => nav.toPath("/accounts/${account.id}"), dense: true)
+      }
+    }
+
+    Panel(title: "Budgets") {
+      if (vm.budgets.isEmpty) {
+        Text("No budgets set for this month", style: .caption)
+      } else {
+        ProgressBar(vm.budgetFraction, height: 10)
+        for (line in vm.budgets) {
+          BudgetRow(line: line)
+        }
+      }
+    }
+
+    Panel(title: "Recent") {
+      if (vm.recent.isEmpty) {
+        Text("Nothing recorded this month", style: .caption)
+      } else {
+        for (tx in vm.recent) {
+          Tile(title: tx.note, subtitle: vm.categoryName(tx), trailing: tx.amount.format(), leading: Dot(Color(vm.categoryColor(tx))), onTap: () => nav.toPath("/transactions/${tx.id}"), dense: true)
+        }
+      }
+      Button("See all transactions") {
+        nav.toPath("/transactions")
+      }
+    }
+
+    Row(gap: 8) {
+      Button("Accounts") {
+        nav.toPath("/accounts")
+      }
+      Button("Categories") {
+        nav.toPath("/categories")
+      }
+    }
+  }
+}

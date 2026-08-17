@@ -113,11 +113,12 @@ class FlxScope extends InheritedWidget {
 ///   val auth = useInject<AuthService>()
 T useInject<T extends Object>() => FlxScope.of(useContext()).get<T>();
 
-/// Base class for screen state that outlives a single build.
+/// Anything that announces "I changed" to interested listeners.
 ///
-/// A ViewModel holds the logic; the composable stays a pure function of it.
-/// Call [notify] after mutating state to rebuild every listening composable.
-abstract class ViewModel implements Disposable {
+/// Kept separate from [ViewModel] so non-UI objects — a repository, a sync
+/// engine, a clock — can be change sources without pretending to be screen
+/// state. A ViewModel that depends on one simply listens to it and re-notifies.
+abstract class Notifier implements Disposable {
   final _listeners = <VoidCallback>{};
   bool _disposed = false;
 
@@ -143,6 +144,12 @@ abstract class ViewModel implements Disposable {
     _listeners.clear();
   }
 }
+
+/// Base class for screen state that outlives a single build.
+///
+/// A ViewModel holds the logic; the composable stays a pure function of it.
+/// Call [notify] after mutating state to rebuild every listening composable.
+abstract class ViewModel extends Notifier {}
 
 /// Resolves a [ViewModel] and rebuilds this composable whenever it notifies.
 ///

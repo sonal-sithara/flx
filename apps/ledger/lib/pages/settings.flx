@@ -1,0 +1,54 @@
+import "../data/session_view_models.dart"
+
+@page("/settings")
+composable SettingsScreen {
+  val vm      = useViewModel<SettingsViewModel>()
+  val nav     = useNavigator()
+  val pin     = useTextField()
+  val confirm = useTextField()
+
+  Screen(title: "Settings", scrollable: true) {
+    Panel(title: "Appearance") {
+      Toggle(vm.darkMode, label: "Dark mode") { on ->
+        vm.setDarkMode(on)
+      }
+    }
+
+    Panel(title: "Security") {
+      Text(vm.hasPin ? "A PIN is set. It is asked for on every launch." : "No PIN set — the ledger opens straight away.", style: .caption)
+
+      Field(controller: pin, label: "New PIN", obscure: true, keyboard: .number, error: vm.pinError)
+      Field(controller: confirm, label: "Confirm PIN", obscure: true, keyboard: .number)
+
+      Button("Set PIN") {
+        vm.setPin(pin.text, confirm.text).then((ok) {
+          if (ok) {
+            pin.clear();
+            confirm.clear();
+          }
+        });
+      }
+
+      if (vm.hasPin) {
+        Button("Remove PIN") {
+          vm.removePin()
+        }
+        Button("Lock now") {
+          vm.lockNow();
+          nav.toPath("/lock");
+        }
+      }
+
+      if (vm.status != null) {
+        Text(vm.status!, style: .caption)
+      }
+    }
+
+    Panel(title: "Data") {
+      Text("Resetting wipes every transaction and reinstates the sample ledger.", style: .caption)
+      Button("Reset ledger") {
+        vm.resetLedger()
+      }
+    }
+  }
+}

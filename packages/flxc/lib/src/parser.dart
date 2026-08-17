@@ -15,6 +15,21 @@ const layoutWidgets = <String, String>{
   'Wrap': 'wrap',
 };
 
+/// Widgets whose block binds an element and is rendered lazily, one item at a
+/// time: `LazyColumn(items: xs) { x in Text(x.name) }`. Unlike `for`, which
+/// builds every child eagerly, these compile to an itemBuilder.
+const builderWidgets = <String>{'LazyColumn', 'LazyRow', 'LazyGrid'};
+
+/// Widgets that take their block as a `children:` argument rather than as a
+/// list extension. This is how a widget tree reaches a named parameter, which
+/// plain arguments cannot express — they are captured as raw expression
+/// tokens, not parsed as widgets.
+const containerWidgets = <String>{'Screen', 'Panel'};
+
+/// Container widgets that supply their own Scaffold, so `@page` must not add
+/// a second one around them.
+const scaffoldProviders = <String>{'Screen', 'Scaffold'};
+
 /// Recursive-descent parser for `.flx`.
 class Parser {
   Parser(this.source) : _tokens = Lexer(source).tokenize();
@@ -397,24 +412,21 @@ class Parser {
     List<Node>? children;
     String? callback;
     Span? callbackSpan;
+    var callbackParams = const <String>[];
+    String? itemVariable;
+    String? indexVariable;
 
     if (_check('{')) {
-      if (layoutWidgets.containsKey(name)) {
-        _advance();
-        children = <Node>[];
-        while (!_check('}')) {
-          if (_current.isEof) {
-            throw FlxError(
-              "unterminated children block of $name",
-              nameTok.span,
-              hint: "add a closing '}'",
-            );
-          }
-          children.add(_parseChild());
-        }
-        _expect('}', context: 'to close the children of $name');
+      if (layoutWidgets.containsKey(name) || containerWidgets.contains(name)) {
+        children = _parseChildrenBlock(name, nameTok);
+      } else if (builderWidgets.contains(name)) {
+        final binding = _parseBuilderBinding(name);
+        itemVariable = binding.$1;
+        indexVariable = binding.$2;
+        children = _parseChildrenBlock(name, nameTok, alreadyOpen: true);
       } else {
-        final block = _captureRawBlock(name, nameTok);
+        callbackParams = _parseCallbackParams();
+        final block = _captureRawBlock(name, nameTok, alreadyOpen: true);
         callback = block.$1;
         callbackSpan = block.$2;
       }
@@ -426,14 +438,101 @@ class Parser {
       children: children,
       callback: callback,
       callbackSpan: callbackSpan,
+      callbackParams: callbackParams,
+      itemVariable: itemVariable,
+      indexVariable: indexVariable,
       span: _spanFrom(nameTok),
     );
   }
 
+  List<Node> _parseChildrenBlock(
+    String name,
+    Token nameTok, {
+    bool alreadyOpen = false,
+  }) {
+    if (!alreadyOpen) _advance(); // `{`
+    final children = <Node>[];
+    while (!_check('}')) {
+      if (_current.isEof) {
+        throw FlxError(
+          'unterminated children block of $name',
+          nameTok.span,
+          hint: "add a closing '}'",
+        );
+      }
+      children.add(_parseChild());
+    }
+    _expect('}', context: 'to close the children of $name');
+    if (children.isEmpty) {
+      throw FlxError(
+        '$name has an empty block',
+        nameTok.span,
+        hint: 'add a child widget, or drop the { }',
+      );
+    }
+    return children;
+  }
+
+  /// Consumes `{ item in` or `{ item, index in` from a builder widget.
+  (String, String?) _parseBuilderBinding(String name) {
+    _expect('{', context: 'to open the $name block');
+    final item = _expectIdentifier(
+      'the name to bind each item to',
+      hint: 'builder blocks look like:  $name(items: xs) { x in ... }',
+    );
+    String? index;
+    if (_match(',')) {
+      index = _expectIdentifier('the index name').lexeme;
+    }
+    if (!_current.isIdent('in')) {
+      throw FlxError(
+        'expected `in` after the item name but found ${_current.describe}',
+        _current.span,
+        hint: '$name binds each element: '
+            '$name(items: xs) { ${item.lexeme} in ... }',
+      );
+    }
+    _advance(); // `in`
+    return (item.lexeme, index);
+  }
+
+  /// Consumes `{` plus an optional `a, b ->` parameter list.
+  ///
+  /// Returns the bound names, empty for a plain `{ ... }` callback. The block
+  /// is left open for [_captureRawBlock] to slice.
+  List<String> _parseCallbackParams() {
+    final open = _pos;
+    _expect('{');
+
+    final params = <String>[];
+    while (_current.type == TokenType.identifier) {
+      params.add(_current.lexeme);
+      _advance();
+      if (_match(',')) continue;
+      break;
+    }
+
+    if (params.isNotEmpty && _check('->')) {
+      _advance();
+      return params;
+    }
+
+    // Not a parameter list after all — rewind past `{` and treat the whole
+    // block as statements.
+    _pos = open + 1;
+    return const [];
+  }
+
   /// Slices the raw source between `{` and its matching `}` — callback
   /// bodies are plain Dart and are passed straight through.
-  (String, Span) _captureRawBlock(String widget, Token nameTok) {
-    final open = _advance(); // `{`
+  (String, Span) _captureRawBlock(
+    String widget,
+    Token nameTok, {
+    bool alreadyOpen = false,
+  }) {
+    // When the block is already open the previous token is either the `{` or
+    // the `->` that closed the parameter list; the body starts right after it.
+    final open = alreadyOpen ? _tokens[_pos - 1] : _advance();
     var depth = 1;
     final bodyStart = open.span.end;
     while (depth > 0) {

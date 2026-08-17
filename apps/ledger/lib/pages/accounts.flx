@@ -1,0 +1,54 @@
+import "../data/overview_view_models.dart"
+import "../domain/models.dart"
+
+@page("/accounts")
+composable AccountsScreen {
+  val vm   = useViewModel<AccountsViewModel>()
+  val nav  = useNavigator()
+  val name = useTextField()
+  val open = useTextField()
+
+  Screen(title: "Accounts", subtitle: "Net worth ${vm.netWorth.format()}", scrollable: true) {
+    Panel(title: "Your accounts") {
+      if (vm.accounts.isEmpty) {
+        Text("No accounts yet", style: .caption)
+      } else {
+        for (account in vm.accounts) {
+          Tile(title: account.name, subtitle: "${account.kind.label} · ${vm.transactionCount(account.id)} transactions", trailing: vm.balanceLabel(account), onTap: () => nav.toPath("/accounts/${account.id}"))
+        }
+      }
+    }
+
+    Panel(title: "Add an account") {
+      Field(controller: name, label: "Name", error: vm.nameError)
+      Field(controller: open, label: "Opening balance", prefix: "\$", keyboard: .number)
+      Button("Add account") {
+        vm.addAccount(name.text, AccountKind.checking, open.text).then((added) {
+          if (added) {
+            name.clear();
+            open.clear();
+          }
+        });
+      }
+    }
+  }
+}
+
+@page("/accounts/:id")
+composable AccountDetailScreen(id) {
+  val vm  = useViewModel<AccountsViewModel>()
+  val nav = useNavigator()
+
+  Screen(title: vm.account(id)?.name ?? "Account", subtitle: vm.balanceOf(id).format()) {
+    Panel {
+      Row(main: .spaceBetween) {
+        Stat(value: vm.balanceOf(id).format(), label: "Balance")
+        Stat(value: "${vm.transactionCount(id)}", label: "Transactions")
+      }
+    }
+
+    LazyColumn(items: vm.transactionsFor(id), gap: 4, expanded: true, empty: EmptyState(title: "No transactions", subtitle: "Nothing has been recorded against this account")) { tx in
+      Tile(title: tx.note.isEmpty ? vm.categoryName(tx) : tx.note, subtitle: "${vm.categoryName(tx)} · ${formatRelativeDate(tx.date)}", trailing: tx.kind == TxKind.income ? tx.amount.format(showSign: true) : "-${tx.amount.format()}", onTap: () => nav.toPath("/transactions/${tx.id}"))
+    }
+  }
+}

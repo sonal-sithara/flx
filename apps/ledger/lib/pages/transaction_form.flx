@@ -1,0 +1,57 @@
+import "../data/transactions_view_models.dart"
+import "../domain/models.dart"
+
+// Shared by the new and edit routes. `id` is empty when creating.
+composable TransactionForm(id) {
+  val vm     = useViewModel<TransactionFormViewModel>()
+  val form   = useMemoized(() => vm.opened(id), [id])
+  val nav    = useNavigator()
+  val amount = useTextField(text: form.initialAmountText(id))
+  val note   = useTextField(text: form.initialNoteText(id))
+
+  Screen(title: form.title, scrollable: true) {
+    Segmented(form.kind, TxKind.values, labelOf: (k) => k.label) { kind ->
+      form.setKind(kind)
+    }
+
+    Field(controller: amount, label: "Amount", prefix: "\$", keyboard: .number, autofocus: true, error: form.amountError(amount.text))
+
+    Picker(form.accountId, form.accounts.map((a) => a.id).toList(), labelOf: (id) => form.accounts.firstWhere((a) => a.id == id).name, label: "Account", error: form.accountError) { picked ->
+      form.setAccount(picked)
+    }
+
+    if (form.needsCategory) {
+      Picker(form.categoryId, form.categories.map((c) => c.id).toList(), labelOf: (id) => form.categories.firstWhere((c) => c.id == id).name, label: "Category", error: form.categoryError) { picked ->
+        form.setCategory(picked)
+      }
+    }
+
+    DateField(form.date, label: "Date") { picked ->
+      form.setDate(picked)
+    }
+
+    Field(controller: note, label: "Note", hint: "What was it for?", maxLines: 2)
+
+    Button(form.isSaving ? "Saving…" : "Save") {
+      form.save(amountText: amount.text, note: note.text).then((saved) {
+        if (saved) nav.pop();
+      });
+    }
+
+    if (form.isEditing) {
+      Button("Delete") {
+        form.delete().then((_) => nav.pop());
+      }
+    }
+  }
+}
+
+@page("/transactions/new")
+composable NewTransactionScreen {
+  TransactionForm(id: "")
+}
+
+@page("/transactions/:id")
+composable EditTransactionScreen(id) {
+  TransactionForm(id: id)
+}

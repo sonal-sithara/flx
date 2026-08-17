@@ -1,6 +1,7 @@
 import 'ast.dart';
 import 'diagnostics.dart';
-import 'parser.dart' show layoutWidgets;
+import 'parser.dart'
+    show containerWidgets, layoutWidgets, scaffoldProviders;
 
 /// Named arguments that are lifted out of a layout call and applied as a
 /// trailing modifier chain instead. `Column(padding: 16) { ... }` becomes
@@ -20,6 +21,28 @@ const _modifiers = <String, _Mod>{
   'card': _Mod.flag,
 };
 
+/// The subset safe to lift onto a widget flxc knows nothing about.
+///
+/// Modifiers are extension methods on Widget, and in Dart an instance member
+/// always beats an extension method. So lifting `scrollable: true` onto a
+/// widget that happens to declare a `scrollable` field silently resolves to
+/// that field and fails with "the expression doesn't evaluate to a function"
+/// — pointing at the constructor, nowhere near the real cause.
+///
+/// `padding`, `scrollable` and `gap` are the names container-style widgets
+/// most often declare themselves, so they are only lifted for layout widgets,
+/// where the target is a List<Widget> extension that cannot collide.
+const _universalModifiers = <String>{
+  'expanded',
+  'center',
+  'card',
+  'rounded',
+  'opacity',
+  'background',
+  'safeArea',
+  'paddingSymmetric',
+};
+
 /// `style: .title` → `Styles.title`. The DSL elides the type name; codegen
 /// restores it from the argument name.
 const _shorthandTypes = <String, String>{
@@ -31,6 +54,15 @@ const _shorthandTypes = <String, String>{
   'overflow': 'TextOverflow',
   'fit': 'BoxFit',
   'axis': 'Axis',
+  'keyboard': 'TextInputType',
+};
+
+/// Argument-name suffixes that imply a type, so every `*Icon` parameter
+/// resolves `.add` to `Icons.add` without being listed one by one.
+const _shorthandSuffixes = <String, String>{
+  'Icon': 'Icons',
+  'Color': 'Colors',
+  'Alignment': 'Alignment',
 };
 
 /// `size:` means MainAxisSize on a layout, but is a plain argument anywhere
@@ -142,10 +174,17 @@ class CodeGenerator {
     }
     if (c.vals.isNotEmpty) buf.writeln();
 
-    // Work out where the root expression will sit before generating it: a
-    // page adds one level for `body:`, and every async val adds two more for
-    // its `.when(data: (x) { return ... })` closure.
-    final baseDepth = c.isPage ? 3 : 2;
+    // A root that already provides a Scaffold (Screen, or a hand-written
+    // Scaffold) must not get a second one wrapped around it.
+    final root = c.root;
+    final providesScaffold =
+        root is WidgetNode && scaffoldProviders.contains(root.name);
+    final wrapInScaffold = c.isPage && !providesScaffold;
+
+    // Work out where the root expression will sit before generating it: the
+    // Scaffold adds one level for `body:`, and every async val adds two more
+    // for its `.when(data: (x) { return ... })` closure.
+    final baseDepth = wrapInScaffold ? 3 : 2;
     final rootDepth = baseDepth + 2 * asyncVals.length;
 
     var expr = _node(c.root, rootDepth);
@@ -154,7 +193,7 @@ class CodeGenerator {
     for (var i = asyncVals.length - 1; i >= 0; i--) {
       expr = _asyncWrap(asyncVals[i].name, expr, baseDepth + 2 * i);
     }
-    if (c.isPage) {
+    if (wrapInScaffold) {
       expr = 'Scaffold(\n'
           '${_pad(3)}body: $expr,\n'
           '${_pad(2)})';
@@ -200,42 +239,45 @@ class CodeGenerator {
 
   String _widget(WidgetNode w, int depth) {
     if (layoutWidgets.containsKey(w.name)) return _layout(w, depth);
+    if (containerWidgets.contains(w.name)) return _container(w, depth);
 
-    final args = <String>[];
-    for (final a in w.args) {
-      args.add(a.name == null
-          ? _shorthand(a, w.name)
-          : '${a.name}: ${_shorthand(a, w.name)}');
+    final split = _splitArgs(w);
+    final args = split.args;
+
+    if (w.isBuilder) {
+      args.add(_itemBuilder(w, depth));
+    } else if (w.callback != null) {
+      args.add(_callback(w.callback!, w.callbackParams, depth));
     }
-    if (w.callback != null) {
-      args.add(_callback(w.callback!, depth));
-    }
-    return '${w.name}(${args.join(', ')})';
+    return '${w.name}(${args.join(', ')})${split.modifiers.join()}';
   }
 
-  /// `Column(gap: 12, padding: 16) { a, b }`
-  ///   → `[a, b].column(gap: 12).padding(16)`
-  String _layout(WidgetNode w, int depth) {
-    final method = layoutWidgets[w.name]!;
-    final callArgs = <String>[];
-    final mods = <String>[];
+  /// Separates real constructor arguments from modifier-chain arguments.
+  ///
+  /// `expanded: true` becomes `.expanded()` on any widget, so a lazy list can
+  /// fill the space inside a Screen. Layout widgets get the full modifier set
+  /// because their target is a `List<Widget>` extension with no members to
+  /// collide with; every other widget gets only [_universalModifiers].
+  ({List<String> args, List<String> modifiers}) _splitArgs(WidgetNode w) {
+    final isLayout = layoutWidgets.containsKey(w.name);
+
+    final args = <String>[];
+    final modifiers = <String>[];
 
     for (final a in w.args) {
       final name = a.name;
-      if (name == null) {
-        throw FlxError(
-          'positional arguments are not supported on ${w.name}',
-          a.span,
-          hint: 'use named arguments, e.g. ${w.name}(gap: 12)',
-        );
-      }
-      final mod = _modifiers[name];
+      final liftable =
+          name != null && (isLayout || _universalModifiers.contains(name));
+      final mod = liftable ? _modifiers[name] : null;
+
       if (mod == null) {
-        callArgs.add('$name: ${_shorthand(a, w.name)}');
+        args.add(name == null
+            ? _shorthand(a, w.name)
+            : '$name: ${_shorthand(a, w.name)}');
         continue;
       }
+
       if (mod == _Mod.flag) {
-        // `center: true` → `.center()`; `center: false` → nothing.
         if (a.value == 'false') continue;
         if (a.value != 'true') {
           throw FlxError(
@@ -244,11 +286,67 @@ class CodeGenerator {
             hint: 'write  $name: true',
           );
         }
-        mods.add('.$name()');
+        modifiers.add('.$name()');
       } else {
-        mods.add('.$name(${_shorthand(a, w.name)})');
+        modifiers.add('.$name(${_shorthand(a, w.name)})');
       }
     }
+    return (args: args, modifiers: modifiers);
+  }
+
+  /// `Screen(title: "Inbox") { a, b }` → `Screen(title: "Inbox", children: [a, b])`
+  String _container(WidgetNode w, int depth) {
+    final split = _splitArgs(w);
+    final args = split.args;
+
+    final children = w.children ?? const <Node>[];
+    args.add('children: [\n'
+        '${children.map((c) => _child(c, depth + 2)).join(',\n')},\n'
+        '${_pad(depth + 1)}]');
+
+    return '${w.name}(\n'
+        '${_pad(depth + 1)}${args.join(',\n${_pad(depth + 1)}')},\n'
+        '${_pad(depth)})${split.modifiers.join()}';
+  }
+
+  /// `LazyColumn(items: xs) { x in Row { ... } }`
+  ///   → `LazyColumn(items: xs, itemBuilder: (x, _) => [...].row())`
+  ///
+  /// The second parameter is always emitted so the runtime has a single
+  /// signature; `_` when the DSL did not ask for the index.
+  String _itemBuilder(WidgetNode w, int depth) {
+    final children = w.children ?? const <Node>[];
+    final index = w.indexVariable ?? '_';
+
+    // A single child is the common case and reads better inline; several
+    // children are stacked into a column so the block stays unrestricted.
+    final body = children.length == 1 && children.first is WidgetNode
+        ? _widget(children.first as WidgetNode, depth + 1)
+        : '[\n'
+            '${children.map((c) => _child(c, depth + 2)).join(',\n')},\n'
+            '${_pad(depth + 1)}].column()';
+
+    return 'itemBuilder: (${w.itemVariable}, $index) => $body';
+  }
+
+  /// `Column(gap: 12, padding: 16) { a, b }`
+  ///   → `[a, b].column(gap: 12).padding(16)`
+  String _layout(WidgetNode w, int depth) {
+    final method = layoutWidgets[w.name]!;
+
+    for (final a in w.args) {
+      if (a.name == null) {
+        throw FlxError(
+          'positional arguments are not supported on ${w.name}',
+          a.span,
+          hint: 'use named arguments, e.g. ${w.name}(gap: 12)',
+        );
+      }
+    }
+
+    final split = _splitArgs(w);
+    final callArgs = split.args;
+    final mods = split.modifiers;
 
     final children = w.children ?? const <Node>[];
     final inner = children.isEmpty
@@ -306,6 +404,7 @@ class CodeGenerator {
     if (name == null) return a.value;
 
     final type = _shorthandTypes[name] ??
+        _suffixType(name) ??
         (layoutWidgets.containsKey(widget) ? _layoutOnlyShorthands[name] : null);
     if (type == null) {
       throw FlxError(
@@ -321,7 +420,8 @@ class CodeGenerator {
 
   /// Callback bodies are raw Dart. Re-indent them to sit correctly in the
   /// generated file and add the semicolons the DSL lets you omit.
-  String _callback(String raw, int depth) {
+  String _callback(String raw, List<String> params, int depth) {
+    final signature = '(${params.join(', ')})';
     final pad = _pad(depth + 1);
     final lines = raw
         .split('\n')
@@ -335,8 +435,20 @@ class CodeGenerator {
       return '$pad$l${needsSemicolon ? ';' : ''}';
     }).toList();
 
-    if (lines.isEmpty) return '() {}';
-    return '() {\n${lines.join('\n')}\n${_pad(depth)}}';
+    if (lines.isEmpty) return '$signature {}';
+    return '$signature {\n${lines.join('\n')}\n${_pad(depth)}}';
+  }
+
+  /// `fabIcon` → Icons, `accentColor` → Colors. Matched case-sensitively on
+  /// the suffix so `iconSize` (a double) is not caught by mistake.
+  static String? _suffixType(String name) {
+    for (final entry in _shorthandSuffixes.entries) {
+      if (name == entry.key.toLowerCase() ||
+          (name.length > entry.key.length && name.endsWith(entry.key))) {
+        return entry.value;
+      }
+    }
+    return null;
   }
 
   static String _pad(int depth) => _indent * depth;

@@ -1,0 +1,20 @@
+// A Screen supplies its own Scaffold, so @page must not wrap it in another.
+@page("/report")
+composable ReportScreen {
+  val vm = useViewModel<ReportViewModel>()
+
+  Screen(title: "Report", scrollable: true, actionIcon: .share, onAction: vm.share) {
+    // `scrollable:` is a real Screen parameter and must stay an argument.
+    // `expanded:` is not, so it lifts into a modifier chain.
+    Panel(title: "Totals") {
+      Text(vm.total, style: .title)
+    }
+    // On a layout widget the full modifier set applies, padding included.
+    Column(padding: 16, gap: 8, center: true, background: Colors.white) {
+      Text("Inside a modified column")
+    }
+    LazyColumn(items: vm.rows, gap: 4, padding: 12, expanded: true) { row in
+      Text(row.label)
+    }
+  }
+}

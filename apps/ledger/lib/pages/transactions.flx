@@ -1,0 +1,41 @@
+import "../data/transactions_view_models.dart"
+import "../domain/models.dart"
+
+// One row of the history list.
+composable TransactionRow(vm: TransactionsViewModel, tx: Transaction) {
+  val nav = useNavigator()
+
+  Tile(title: tx.note.isEmpty ? vm.categoryName(tx) : tx.note, subtitle: "${vm.categoryName(tx)} · ${vm.accountName(tx)} · ${formatRelativeDate(tx.date)}", trailing: tx.kind == TxKind.income ? tx.amount.format(showSign: true) : "-${tx.amount.format()}", leading: Dot(Color(vm.categoryColor(tx))), onTap: () => nav.toPath("/transactions/${tx.id}"))
+}
+
+@page("/transactions")
+composable TransactionsScreen {
+  val vm     = useViewModel<TransactionsViewModel>()
+  val nav    = useNavigator()
+  val search = useTextField(text: vm.query.search)
+
+  Screen(title: "Transactions", subtitle: vm.countLabel, fabIcon: .add, onFab: () => nav.toPath("/transactions/new")) {
+    SearchField(search, hint: "Search notes, categories, amounts") { text ->
+      vm.setSearch(text)
+    }
+
+    Row(gap: 8) {
+      Button(vm.query.kind == null ? "All" : vm.query.kind!.label) {
+        vm.setKind(vm.query.kind == null ? TxKind.expense : null)
+      }
+      if (vm.isFiltered) {
+        Button("Clear filters") {
+          vm.clearFilters()
+        }
+      }
+    }
+
+    LazyColumn(items: vm.items, gap: 4, onEndReached: vm.loadMore, expanded: true, empty: EmptyState(title: "Nothing found", subtitle: "Try a different search or clear the filters")) { tx in
+      TransactionRow(vm: vm, tx: tx)
+    }
+
+    if (vm.hasMore) {
+      Text("Keep scrolling to load more", style: .caption)
+    }
+  }
+}

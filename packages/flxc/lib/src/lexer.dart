@@ -13,6 +13,8 @@ const _operators = <String>[
   '++',
   '--',
   '=>',
+  // Binds a parameterised callback block: `onChanged: { value -> ... }`.
+  '->',
   '==',
   '!=',
   '<=',

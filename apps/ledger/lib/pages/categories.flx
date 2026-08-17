@@ -1,0 +1,59 @@
+import "../data/overview_view_models.dart"
+import "../data/ledger_repository.dart"
+
+@page("/categories")
+composable CategoriesScreen {
+  val vm     = useViewModel<CategoriesViewModel>()
+  val budget = useTextField(text: vm.editingId == null ? "" : vm.initialBudgetText(vm.editingId!))
+  val name   = useTextField()
+
+  Screen(title: "Categories", subtitle: vm.periodLabel, scrollable: true) {
+    if (vm.overBudgetCount > 0) {
+      Panel {
+        Text("${vm.overBudgetCount} categories are over budget this month", style: .body)
+      }
+    }
+
+    Panel(title: "Spending and budgets") {
+      for (line in vm.lines) {
+        Column(gap: 4, cross: .start) {
+          Row(main: .spaceBetween) {
+            Row(gap: 8) {
+              Dot(Color(line.category.colorValue))
+              Text(line.category.name, style: .body)
+            }
+            Text(vm.budgetLabel(line), style: .caption)
+          }
+          if (line.hasBudget) {
+            ProgressBar(line.fraction, color: Color(line.category.colorValue), isOver: line.isOver)
+          }
+          if (vm.editingId == line.category.id) {
+            Row(gap: 8) {
+              // expanded: a TextField in a Row has no width constraint otherwise.
+              Field(controller: budget, label: "Monthly budget", prefix: "\$", keyboard: .number, error: vm.budgetError, expanded: true)
+              Button("Save") {
+                vm.saveBudget(line.category.id, budget.text);
+              }
+              Button("Cancel") {
+                vm.cancelEditing()
+              }
+            }
+          } else {
+            Button(line.hasBudget ? "Change budget" : "Set a budget") {
+              vm.startEditing(line.category.id)
+            }
+          }
+        }
+      }
+    }
+
+    Panel(title: "Add a category") {
+      Field(controller: name, label: "Name")
+      Button("Add category") {
+        vm.addCategory(name.text, 0xFF7E57C2).then((added) {
+          if (added) name.clear();
+        });
+      }
+    }
+  }
+}

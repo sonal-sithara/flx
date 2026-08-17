@@ -20,21 +20,22 @@ composable Greeting(name) {
 
 ## Layout
 
-| Path             | What it is                                              |
-| ---------------- | ------------------------------------------------------- |
-| `packages/flx`   | The runtime — hooks engine, router, DI, modifiers        |
-| `packages/flxc`  | The compiler — lexer, parser, codegen, CLI, watch mode   |
-| `example`        | A Flutter app exercising every DSL feature               |
-| `tools/vscode-flx` | Syntax highlighting for `.flx`                        |
+| Path               | What it is                                            |
+| ------------------ | ----------------------------------------------------- |
+| `packages/flx`     | The runtime — hooks engine, router, DI, widgets        |
+| `packages/flxc`    | The compiler — lexer, parser, codegen, CLI, watch mode |
+| `apps/ledger`      | **Ledger** — the flagship app, an expense tracker      |
+| `example`          | A small app exercising every DSL feature               |
+| `tools/vscode-flx` | Syntax highlighting for `.flx`                         |
 
 ## Getting started
 
 ```bash
-make setup     # fetch deps for all three packages
+make setup     # fetch deps for all four packages
 make build     # .flx -> .dart, and regenerate routes.g.dart
-make run       # build, then launch the example app
+make run       # build, then launch Ledger
 make watch     # rebuild on every save
-make test      # 85 tests across compiler, runtime and app
+make test      # 205 tests across compiler, runtime and both apps
 ```
 
 ## The compiler
@@ -80,9 +81,34 @@ name, so it never depends on type inference.
 children block and compile to Dart's collection-if and collection-for, so a
 branch may contain several widgets.
 
+**Blocks that bind names.** A trailing block can take parameters, and a
+builder widget binds each element instead of building them all:
+
+```
+SearchField(query) { text ->            // → (text) { ... }
+  vm.setSearch(text)
+}
+LazyColumn(items: vm.rows) { row, i ->  // → itemBuilder: (row, i) => ...
+  Text("${i}. ${row.title}")
+}
+Screen(title: "Inbox") {                // → Screen(title: ..., children: [...])
+  ...
+}
+```
+
+`Screen` and `Panel` take their block as a `children:` argument, which is how
+a widget tree reaches a named parameter — ordinary arguments are captured as
+expression tokens, not parsed as widgets. A composable whose root is a
+`Screen` is not wrapped in a second Scaffold.
+
 **Shorthands.** `style: .title` → `Styles.title`, `main: .center` →
-`MainAxisAlignment.center`. `padding:`, `background:`, `center:` and friends are
-lifted out of the layout call into a modifier chain.
+`MainAxisAlignment.center`, and any `*Icon:` argument resolves against `Icons`.
+
+**Modifiers.** `padding:`, `background:`, `center:` and friends are lifted out
+of a layout call into a modifier chain. On non-layout widgets only the
+modifiers that cannot collide with a real parameter are lifted — an instance
+member always beats an extension method in Dart, so lifting `scrollable:` onto
+a widget that declares one produces a baffling error far from its cause.
 
 ## The runtime
 
@@ -90,9 +116,14 @@ A hooks engine in ~250 lines, same slot-cursor principle as React: hooks must be
 called in the same order every build.
 
 `useState` · `useRef` · `useMemoized` · `useEffect` · `useRebuild` ·
-`useListenable` · `useTextEditingController` · `useFocusNode` · `useFetch` ·
-`useInterval` · `useDebounced` · `useTheme` · `useNavigator` · `useMediaQuery` ·
-`useInject` · `useViewModel`
+`useListenable` · `useTextEditingController` · `useTextField` · `useFocusNode` ·
+`useScrollController` · `useFetch` · `useInterval` · `useDebounced` ·
+`useTheme` · `useNavigator` · `useMediaQuery` · `useInject` · `useViewModel`
+
+Widgets: `Screen` · `Panel` · `LazyColumn` · `LazyRow` · `LazyGrid` · `Field` ·
+`SearchField` · `Picker` · `Segmented` · `DateField` · `Toggle` · `Tile` ·
+`Stat` · `Pill` · `Dot` · `ProgressBar` · `EmptyState` · `Section` · `Button` ·
+`Avatar`
 
 Effects run **after the frame**, not during build — so `useEffect(() =>
 nav.push(...))` works instead of throwing.
@@ -146,6 +177,10 @@ Domains capability plus `/.well-known/apple-app-site-association`.
 
 ## Status
 
-Production-solid for in-house use: 85 tests, real diagnostics, watch mode, a
-demo app that builds for web, iOS, Android and macOS. Not yet published to
-pub.dev, and not yet documented for outside contributors.
+Production-solid for in-house use: 205 tests, real diagnostics, watch mode, and
+two apps that build for web, iOS, Android and macOS — including
+[Ledger](apps/ledger), a complete expense tracker written entirely in the DSL.
+
+Not published to pub.dev, and not yet documented for outside contributors.
+That is the deliberate scope: the bar is "trustworthy for our own work", not
+"usable by strangers".

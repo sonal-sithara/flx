@@ -14,18 +14,24 @@ Monorepo with path dependencies — no melos, no workspace tooling.
 - `packages/flx/` — the runtime. Own hooks engine (`core.dart`, NO
   flutter_hooks), context hooks, DI (`di.dart`), fluent modifiers, layout
   extensions, router, styles.
-- `example/` — demo Flutter app. `lib/pages/*.flx` is the source of truth;
-  generated `.dart` files are never hand-edited.
+- `apps/ledger/` — **Ledger**, the flagship app (expense tracker). `domain/` is
+  plain Dart, `data/` holds storage + repository + ViewModels, `pages/*.flx`
+  are the screens.
+- `example/` — small demo app exercising every DSL feature; doubles as a
+  regression target for codegen.
 - `tools/vscode-flx/` — TextMate grammar for `.flx`.
+
+In both apps `lib/pages/*.flx` is the source of truth; generated `.dart` files
+are never hand-edited.
 
 ## Build
 
 ```bash
 make build      # transpile all .flx + generate routes.g.dart
-make watch      # rebuild on save
-make test       # 85 tests: compiler goldens, runtime widget tests, app e2e
+make watch      # rebuild Ledger's pages on save
+make test       # 205 tests: compiler goldens, runtime, both apps
 make ci         # analyze + build + stale-codegen check + test
-make run        # launch the example app
+make run        # launch Ledger
 ```
 
 ## Key invariants
@@ -38,8 +44,17 @@ make run        # launch the example app
 - Context hooks (`useNavigator` etc.) are build-time only; captured in vals,
   used in callbacks.
 - Hooks are positional. Effects run **post-frame**, never during build.
-- A trailing `{ }` after Column/Row/Stack/Wrap is children; after anything else
-  it is a callback. Keyed off the widget name, never type inference.
+- A trailing `{ }` is children after a layout widget (Column/Row/Stack/Wrap) or
+  a container widget (Screen/Panel); an item binding after a builder widget
+  (LazyColumn/LazyRow/LazyGrid, `{ x in ... }`); otherwise a callback, which
+  may take parameters (`{ v -> ... }`). Always keyed off the widget name,
+  never type inference.
+- Modifier lifting (`padding:`, `expanded:`, ...) is unrestricted only on
+  layout widgets. Everywhere else just `_universalModifiers` are lifted: an
+  instance member beats an extension method in Dart, so lifting a name the
+  widget actually declares fails far from its cause. Adding a modifier means
+  checking that name against flx's own widget parameters.
+- Route tables are ordered by specificity, so `/a/new` beats `/a/:id`.
 - Generated `.dart` is committed and must be regenerated when its `.flx`
   changes — `make ci` fails on a stale tree.
 
@@ -62,11 +77,21 @@ line, column and hint. New diagnostics get a test there.
 4. (DONE) VS Code `.flx` syntax highlighting
 5. (DONE) `useInject<T>()` DI hook + ViewModel pattern
 6. (DONE) Transpiler golden tests + widget tests for the hooks engine
-7. **Flagship app** — the real product built on flx. Scope not yet decided.
+7. (DONE) Flagship app — `apps/ledger`, an expense tracker
 8. LSP for `.flx`: diagnostics on save first, then completion and
    go-to-definition. The parser already carries spans for this.
-9. Publish `flx` + `flxc` to pub.dev (needs docs for outside contributors,
-   semver policy, CI).
+9. Ledger backend: the repository layer is already the seam. Sync, auth and
+   multi-device would go behind `Storage`/`LedgerRepository`.
+10. Publish `flx` + `flxc` to pub.dev (needs docs for outside contributors,
+    semver policy, CI).
+
+## Growing the framework
+
+New DSL features have come from the flagship app hitting a wall, not from
+speculation. The loop that works: write the screen in `.flx` as it should
+read, let flxc fail, then decide whether the gap belongs in the compiler
+(syntax), the runtime (a widget or hook), or neither. Record the decision in
+a golden fixture or a runtime test before moving on.
 
 ## Deliberately not done
 

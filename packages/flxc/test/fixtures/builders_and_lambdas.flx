@@ -1,0 +1,30 @@
+@page("/feed")
+composable FeedScreen {
+  val vm = useViewModel<FeedViewModel>()
+
+  Column(padding: 16, gap: 12) {
+    // Parameterised callback: `{ name -> ... }` becomes `(name) { ... }`.
+    SearchField(vm.search) { text ->
+      vm.setSearch(text)
+    }
+    // Builder block: lazy, one item at a time, unlike `for`.
+    LazyColumn(items: vm.posts, gap: 8, onEndReached: vm.loadMore) { post in
+      PostRow(post: post)
+    }
+    // The index is bound only when asked for.
+    LazyColumn(items: vm.tags) { tag, i in
+      Row(gap: 4) {
+        Text("${i + 1}.")
+        Text(tag)
+      }
+    }
+    // Zero-argument callbacks still work exactly as before.
+    Button("Refresh") {
+      vm.refresh()
+    }
+    Toggle(vm.starred) { on ->
+      vm.setStarred(on)
+      vm.refresh()
+    }
+  }
+}

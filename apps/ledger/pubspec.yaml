@@ -1,0 +1,27 @@
+name: ledger
+description: Ledger — a personal expense tracker, built entirely in flx.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flx:
+    path: ../../packages/flx
+
+  # App-layer dependencies only. The flx runtime itself stays dependency-free.
+  # Both are Dart/Flutter team packages, and both sit behind an interface:
+  # Storage (see data/storage.dart) and PinLock (see data/security.dart).
+  shared_preferences: ^2.3.0
+  crypto: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
