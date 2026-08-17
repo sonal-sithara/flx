@@ -25,3 +25,6 @@ packages/flx_lsp/build/
 # Server binaries bundled into a VSIX by CI, never committed.
 tools/vscode-flx/server/
 tools/vscode-flx/*.vsix
+
+# VS Code test harness: a 300MB download and its scratch dirs.
+tools/vscode-flx/.vscode-test/

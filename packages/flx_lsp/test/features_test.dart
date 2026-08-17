@@ -227,6 +227,43 @@ composable Here {
       expect((result.single as Map)['uri'], otherUri);
     });
 
+    test('a local declaration wins over a same-named one elsewhere', () async {
+      // Nothing namespaces composables, so a workspace routinely holds
+      // several called Badge. Taking the first index hit resolved by hash
+      // order, and could land in an unrelated file — go-to-definition on a
+      // name declared in the very same file jumped somewhere else entirely.
+      await openDocument(
+        client,
+        'composable Badge(label) {\n  Text("elsewhere")\n}\n',
+        uri: 'file:///workspace/lib/pages/other.flx',
+      );
+
+      const local = '''
+composable Badge(label) {
+  Text("here")
+}
+
+composable Uses {
+  Column {
+    Badge(label: "x")
+  }
+}
+''';
+      await openDocument(client, local);
+
+      final result = await at(
+        client,
+        'textDocument/definition',
+        local,
+        'Badge',
+        occurrence: 1,
+      ) as List;
+
+      expect(result, hasLength(1));
+      expect((result.single as Map)['uri'], testUri,
+          reason: 'the declaration in this file, not the other one');
+    });
+
     test('returns nothing for an unknown name', () async {
       final result = await at(
         client,

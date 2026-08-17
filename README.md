@@ -43,6 +43,7 @@ make build     # .flx -> .dart, and regenerate routes.g.dart
 make run       # build, then launch Ledger
 make watch     # rebuild on every save
 make test      # 343 tests across compiler, server, runtime and apps
+make vscode-test  # drive the extension in a real VS Code
 ```
 
 ## The compiler

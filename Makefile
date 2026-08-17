@@ -1,4 +1,4 @@
-.PHONY: help setup build watch test analyze run clean ci lsp lsp-build
+.PHONY: help setup build watch test analyze run clean ci lsp lsp-build vscode-test
 
 FLXC   := dart run packages/flxc/bin/flxc.dart
 PAGES  := apps/ledger/lib/pages
@@ -15,6 +15,7 @@ help:
 	@echo "  make run       Build, then launch Ledger"
 	@echo "  make lsp       Run the language server (editors do this for you)"
 	@echo "  make lsp-build Compile the language server to a native binary"
+	@echo "  make vscode-test  Run the VS Code extension in a real editor"
 	@echo "  make ci        analyze + build + stale-codegen check + test"
 	@echo "  make clean     Remove generated Dart and build output"
 
@@ -48,6 +49,12 @@ analyze:
 
 lsp:
 	cd packages/flx_lsp && dart run bin/flx_lsp.dart
+
+# Launches a real VS Code with the extension loaded and drives it. Downloads
+# ~300MB the first time, which is why it is not part of `make ci`.
+vscode-test:
+	npm --prefix tools/vscode-flx install
+	npm --prefix tools/vscode-flx test
 
 # A compiled server starts in milliseconds instead of seconds. Point
 # flx.server.path at the result.

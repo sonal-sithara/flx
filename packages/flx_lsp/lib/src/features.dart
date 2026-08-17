@@ -107,7 +107,10 @@ Map<String, Object?>? hoverAt(
   }
 
   // A composable declared anywhere in the workspace.
-  final composable = workspace.findComposable(token.lexeme);
+  final composable = workspace.findComposable(
+    token.lexeme,
+    preferUri: analysis.document.uri,
+  );
   if (composable != null) {
     final decl = composable.decl;
     final params = decl.params
@@ -188,7 +191,10 @@ List<Map<String, Object?>> definitionAt(
   final token = tokenAt(analysis, offset);
   if (token == null || token.type != TokenType.identifier) return const [];
 
-  final composable = workspace.findComposable(token.lexeme);
+  final composable = workspace.findComposable(
+    token.lexeme,
+    preferUri: analysis.document.uri,
+  );
   if (composable != null) {
     final target = workspace[composable.uri];
     if (target != null) {

@@ -105,7 +105,25 @@ class Workspace {
     }
   }
 
-  ({String uri, ComposableDecl decl})? findComposable(String name) {
+  /// Finds a composable by name, preferring the file asking.
+  ///
+  /// Nothing namespaces composables, so a workspace can hold several called
+  /// `Badge`. Iterating the index and taking the first match resolved by hash
+  /// order — go-to-definition on a name declared in the very same file could
+  /// land in an unrelated one. The local declaration wins, as it would in
+  /// Dart.
+  ({String uri, ComposableDecl decl})? findComposable(
+    String name, {
+    String? preferUri,
+  }) {
+    if (preferUri != null) {
+      final local = _analyses[preferUri]?.ast;
+      if (local != null) {
+        for (final decl in local.composables) {
+          if (decl.name == name) return (uri: preferUri, decl: decl);
+        }
+      }
+    }
     for (final candidate in composables) {
       if (candidate.decl.name == name) return candidate;
     }

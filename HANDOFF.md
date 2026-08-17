@@ -113,22 +113,32 @@ and an `icon` field in `package.json`. Listings without one look abandoned.
 
 ## What is untested, and will bite first
 
-**The VS Code client has never run.** The server has 73 tests driven through
-its real protocol framing, and the compiled binary is verified over stdio. The
-extension that launches it — `tools/vscode-flx/client/extension.js` — has
-never been loaded by VS Code. Try it locally before tagging:
+**The workflows have never run.** Both are plausible and neither is proven —
+in particular the `extension` job needs `xvfb` on Linux, which is written in
+but unverified.
+
+**`vsce package` has never run here.** Expect it to complain about a missing
+icon, repository field, or LICENSE reference on the first attempt.
+
+The extension client itself *is* tested now:
+
+```bash
+make vscode-test
+```
+
+launches a real VS Code with the extension loaded and drives it through eight
+assertions — activation, diagnostics arriving and clearing, completion in a
+binding and in a children block, hover, go-to-definition and the outline. That
+found one bug the unit tests could not: go-to-definition preferred whichever
+same-named composable the workspace index happened to hash first, so jumping
+to a `Badge` declared in the open file could land in an unrelated one.
+
+To use it day to day rather than test it:
 
 ```bash
 npm install --prefix tools/vscode-flx
 ln -s "$PWD/tools/vscode-flx" ~/.vscode/extensions/flx
 ```
-
-Reload the window, open a `.flx`, and check the **flx** output channel.
-
-**The workflows have never run.** Both are plausible and neither is proven.
-
-**`vsce package` has never run here.** Expect it to complain about a missing
-icon, repository field, or LICENSE reference on the first attempt.
 
 ---
 

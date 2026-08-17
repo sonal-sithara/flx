@@ -49,3 +49,24 @@ jobs:
       # real target, so build the flagship app as well.
       - run: flutter build ${{ matrix.target }} --release
         working-directory: apps/ledger
+
+  extension:
+    name: vs code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - run: make setup
+      - run: npm --prefix tools/vscode-flx install
+
+      # The extension host needs a display, and VS Code is downloaded on
+      # first run. This is the only thing that exercises the client — the
+      # half between the editor and the language server.
+      - name: Drive a real VS Code
+        run: xvfb-run -a npm --prefix tools/vscode-flx test
