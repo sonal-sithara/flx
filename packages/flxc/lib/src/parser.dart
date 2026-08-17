@@ -215,7 +215,7 @@ class Parser {
     }
     _expect('}', context: 'to close $name');
 
-    return ComposableDecl(
+    final decl = ComposableDecl(
       name: name,
       params: params,
       vals: vals,
@@ -223,6 +223,36 @@ class Parser {
       route: route,
       span: _spanFrom(start),
     );
+    _checkCallableParams(decl);
+    return decl;
+  }
+
+  /// Catches a parameter that is called as a function but has no declared
+  /// type.
+  ///
+  /// An untyped parameter defaults to String, which is right for route
+  /// params — they arrive from a URL as text. Calling one produces
+  /// "the expression doesn't evaluate to a function", pointing at the
+  /// generated call site with no mention of the parameter or its type. The
+  /// rule is simple once you know it, so the compiler should say it.
+  void _checkCallableParams(ComposableDecl decl) {
+    final body = source.text.substring(decl.span.start, decl.span.end);
+
+    for (final param in decl.params) {
+      if (!param.isTypeImplicit) continue;
+      // The name, called: not preceded by an identifier character (so
+      // `vm.onDelete(` does not count) and followed by an open paren.
+      final called = RegExp('(?<![\\w\$.])${RegExp.escape(param.name)}\\s*\\(');
+      if (!called.hasMatch(body)) continue;
+      throw FlxError(
+        "parameter '${param.name}' is called as a function, but has no "
+        'declared type so it defaults to String',
+        param.span,
+        hint: 'give it one, e.g. '
+            '${param.name}: VoidCallback  —  or  '
+            '${param.name}: void Function(String)',
+      );
+    }
   }
 
   void _validateRouteParams(String? route, List<Param> params, Span span) {
@@ -256,16 +286,23 @@ class Parser {
     while (!_check(')')) {
       final nameTok = _expectIdentifier('a parameter name');
       var type = 'String';
+      var implicit = true;
       if (_match(':')) {
         type = serialize(_captureType());
+        implicit = false;
       }
       String? defaultValue;
       if (_match('=')) {
         defaultValue = serialize(_captureUntil(const {',', ')'}));
       }
       params.add(
-        Param(nameTok.lexeme, type, _spanFrom(nameTok),
-            defaultValue: defaultValue),
+        Param(
+          nameTok.lexeme,
+          type,
+          _spanFrom(nameTok),
+          defaultValue: defaultValue,
+          isTypeImplicit: implicit,
+        ),
       );
       if (!_match(',') && !_check(')')) {
         throw FlxError(

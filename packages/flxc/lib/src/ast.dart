@@ -32,11 +32,21 @@ class ImportDecl {
 }
 
 class Param {
-  Param(this.name, this.type, this.span, {this.defaultValue});
+  Param(
+    this.name,
+    this.type,
+    this.span, {
+    this.defaultValue,
+    this.isTypeImplicit = false,
+  });
 
   final String name;
   final String type;
   final Span span;
+
+  /// True when no type was written and `String` was assumed — the right
+  /// default for route parameters, which arrive from a URL as text.
+  final bool isTypeImplicit;
 
   /// Serialized default, e.g. `0` in `composable Badge(count: int = 0)`.
   final String? defaultValue;

@@ -21,6 +21,17 @@ dependencies:
   provider: ^6.1.0
   get: ^4.6.6
 
+  # UI packages, chosen because each has a differently-shaped API: named
+  # constructors, several builder callbacks on one widget, widget-valued
+  # arguments, deeply nested config objects.
+  cached_network_image: ^3.3.0
+  flutter_svg: ^2.0.0
+  shimmer: ^3.0.0
+  flutter_staggered_grid_view: ^0.7.0
+  flutter_slidable: ^3.1.0
+  fl_chart: ^0.69.0
+  google_fonts: ^6.2.0
+
 dev_dependencies:
   flutter_lints: ^5.0.0
 

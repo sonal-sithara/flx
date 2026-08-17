@@ -217,6 +217,49 @@ void main() {
     });
   });
 
+  group('parameter types', () {
+    test('an untyped parameter called as a function is caught early', () {
+      // Left alone this becomes a String, and Dart reports "the expression
+      // doesn't evaluate to a function" inside generated code, naming neither
+      // the parameter nor its type.
+      expectError(
+        'composable Row2(label, onDelete) {\n'
+        '  Button(label) {\n'
+        '    onDelete()\n'
+        '  }\n'
+        '}\n',
+        message: contains("parameter 'onDelete' is called as a function"),
+        line: 1,
+        column: 24,
+        hint: contains('VoidCallback'),
+      );
+    });
+
+    test('an explicit type is left alone', () {
+      final dart = compiler.compileSource(Source(
+        'test.flx',
+        'composable Row2(label, onDelete: VoidCallback) {\n'
+        '  Button(label) {\n'
+        '    onDelete()\n'
+        '  }\n'
+        '}\n',
+      ));
+      expect(dart, contains('final VoidCallback onDelete;'));
+    });
+
+    test('a method call on another object is not mistaken for one', () {
+      final dart = compiler.compileSource(Source(
+        'test.flx',
+        'composable Row2(label) {\n'
+        '  Button(label) {\n'
+        '    vm.label()\n'
+        '  }\n'
+        '}\n',
+      ));
+      expect(dart, contains('vm.label()'));
+    });
+  });
+
   group('codegen', () {
     test('unknown shorthand type', () {
       expectError(

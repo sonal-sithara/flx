@@ -1,0 +1,122 @@
+// Popular UI packages, written in flx.
+//
+// Each one is here because its API has a different shape. If flx can express
+// all of these, "use any package" is a fact rather than a claim.
+import "package:cached_network_image/cached_network_image.dart"
+import "package:flutter_svg/flutter_svg.dart"
+import "package:shimmer/shimmer.dart"
+import "package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart"
+import "package:flutter_slidable/flutter_slidable.dart"
+import "package:fl_chart/fl_chart.dart"
+import "package:google_fonts/google_fonts.dart"
+
+// ── cached_network_image: two builder callbacks on one widget ──────────────
+composable Avatar(url) {
+  CachedNetworkImage(
+    imageUrl: url,
+    width: 64,
+    height: 64,
+    fit: .cover,
+    placeholder: { context, path =>
+      Shimmer.fromColors(
+        baseColor: Colors.grey.shade300,
+        highlightColor: Colors.grey.shade100,
+        child: Container(width: 64, height: 64, color: Colors.white),
+      )
+    },
+    errorWidget: { context, path, error =>
+      Icon(Icons.broken_image, size: 32)
+    },
+  )
+}
+
+// ── flutter_svg + google_fonts: named constructors, and a package call in
+//    an ordinary argument ────────────────────────────────────────────────────
+composable Header(title) {
+  Row(gap: 12, cross: .center) {
+    SvgPicture.asset("assets/logo.svg", width: 32, height: 32)
+    Text(title, style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600))
+  }
+}
+
+// ── flutter_staggered_grid_view: named constructor plus an itemBuilder ─────
+composable PhotoGrid(urls: List<String>) {
+  MasonryGridView.count(
+    crossAxisCount: 2,
+    mainAxisSpacing: 8,
+    crossAxisSpacing: 8,
+    itemCount: urls.length,
+    itemBuilder: { context, index =>
+      Column(gap: 4) {
+        Avatar(url: urls[index])
+        Text("photo ${index + 1}", style: .caption)
+      }
+    },
+  )
+}
+
+// ── flutter_slidable: widget-valued arguments nested inside a list ─────────
+composable SlidableRow(label, onDelete: VoidCallback) {
+  Slidable(
+    endActionPane: ActionPane(
+      motion: const DrawerMotion(),
+      extentRatio: 0.25,
+      children: [
+        SlidableAction(
+          onPressed: { context ->
+            onDelete();
+          },
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          icon: Icons.delete,
+          label: "Delete",
+        ),
+      ],
+    ),
+    child: Tile(title: label, subtitle: "swipe me"),
+  )
+}
+
+// ── fl_chart: deeply nested configuration objects ──────────────────────────
+composable Sparkline(points: List<FlSpot>) {
+  SizedBox(
+    height: 160,
+    child: LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: points,
+            isCurved: true,
+            barWidth: 3,
+            dotData: const FlDotData(show: false),
+          ),
+        ],
+      ),
+    ),
+  )
+}
+
+@page("/gallery")
+composable GalleryScreen {
+  val urls   = useState(["https://example.com/a.jpg", "https://example.com/b.jpg"])
+  val points = useMemoized(() => [FlSpot(0, 1), FlSpot(1, 3), FlSpot(2, 2)])
+
+  Screen(title: "UI packages", scrollable: true) {
+    Header(title: "Gallery")
+    Sparkline(points: points)
+    SlidableRow(label: "A slidable row", onDelete: () => urls.value = [])
+
+    // A lazy flx list whose rows come from a third-party widget.
+    LazyColumn(items: urls.value, gap: 8, shrinkWrap: true) { url, i in
+      Row(gap: 8, cross: .center) {
+        Avatar(url: url)
+        Text("row ${i + 1}")
+      }
+    }
+
+    SizedBox(height: 320, child: PhotoGrid(urls: urls.value))
+  }
+}

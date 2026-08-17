@@ -18,4 +18,19 @@ widget API takes:
 again, this fails — which is the point. The claim "flx has no limitations" is
 only worth making if something checks it.
 
+## UI packages
+
+`lib/pages/ui_packages.flx` does the same for widget libraries, again chosen
+for API shape rather than popularity:
+
+| Package | The shape it exercises |
+| --- | --- |
+| `cached_network_image` | Two builder callbacks on one widget (`placeholder:`, `errorWidget:`) |
+| `shimmer` | Named constructor with a widget-valued `child:` |
+| `flutter_svg` | Named constructor (`SvgPicture.asset`) |
+| `flutter_staggered_grid_view` | Named constructor plus an `itemBuilder:` |
+| `flutter_slidable` | Widget-valued arguments nested inside a list |
+| `fl_chart` | Deeply nested configuration objects |
+| `google_fonts` | A package call in an ordinary argument |
+
 There is no `main.dart` and nothing to run.
