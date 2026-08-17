@@ -25,6 +25,7 @@ rather than wiring this up by hand.
 | Completion                  | Hooks, widgets, arguments, enum shorthands, `Icons`, local bindings, composables |
 | Hover                       | Signatures and docs; the route for a `@page`; the expression behind a binding    |
 | Go to definition            | Composables across files, bindings, parameters — including from inside `${…}`    |
+| … and into Dart             | Hooks, widgets, your own classes: `useState` lands in flx_runtime, `Text` in Flutter |
 | Outline & workspace symbols | Composables with their bindings nested                                           |
 
 ## The design constraint

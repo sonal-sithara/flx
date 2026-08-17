@@ -21,24 +21,6 @@ composable InboxScreen(id) {
 }
 ''';
 
-Future<Object?> at(
-  TestClient client,
-  String method,
-  String text,
-  Pattern needle, {
-  int occurrence = 0,
-}) async {
-  var index = -1;
-  for (var i = 0; i <= occurrence; i++) {
-    index = text.indexOf(needle, index + 1);
-    if (index < 0) throw ArgumentError('no match $occurrence for $needle');
-  }
-  return client.request(method, {
-    'textDocument': {'uri': testUri},
-    'position': positionOf(text, index + 1),
-  });
-}
-
 void main() {
   late TestClient client;
 

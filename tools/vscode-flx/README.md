@@ -36,11 +36,19 @@ then point `flx.server.path` at the binary it prints.
 | Completion | Hooks, widgets, argument names, enum shorthands, `Icons`, local `val`s and composables |
 | Hover | Signature and documentation for hooks and widgets; route for a `@page`; expression for a `val` |
 | Go to definition | Composables across files, `val`s and parameters — including from inside `${...}` |
+| **Into the Dart** | `useState` opens flx_runtime, `Button` its widget, `Text` opens Flutter, and your own classes open where you wrote them |
 | Outline | Composables with their bindings nested, in the breadcrumb and symbol list |
 | Workspace symbols | `Cmd-T` finds any composable by name |
+| File icon | The Dart mark in flx violet, on `.flx` files in the explorer and tabs |
 
 Completion works on files that **don't parse**, which is most of them while
 you type. It reads the token stream rather than the AST.
+
+The file icon is contributed against the language, which is the only hook VS
+Code offers short of shipping an entire file icon theme. A file icon theme can
+opt out of language icons with `showLanguageModeIcons: false`, and some do —
+the default **Seti** theme shows the flx mark, the built-in **Modern Icons**
+theme keeps its own generic file icon instead.
 
 ## Settings
 
@@ -79,6 +87,12 @@ flxc analyze apps/ledger/lib/pages
 
 - No rename, no code actions, no formatting.
 - No signature help while typing arguments.
+- Jumping into Dart resolves **names, not members**: `useState` and
+  `LedgerViewModel` land where they are declared, `vm.setSearch` does not —
+  the index holds top-level declarations, so a hit on a member name would be a
+  coincidence pointing at the wrong file.
+- That index is built when the server starts. Add a hook to flx_runtime and
+  the editor finds it after **flx: Restart Language Server**.
 - Completion inside `${...}` offers local bindings but not their members —
   that would need Dart type information the server does not have.
 - The extension is not packaged or published; it is symlinked from the repo.

@@ -321,6 +321,7 @@ disagree with the build.
 | Completion | Hooks, widgets, arguments, enum shorthands, `Icons`, local `val`s, composables |
 | Hover | Signatures and docs; the route for a `@page`; the expression behind a `val` |
 | Go to definition | Composables across files, `val`s, parameters — including from inside `${...}` |
+| Go to definition, in Dart | Hooks, widgets and your own classes: `useState` opens flx_runtime, `Text` opens Flutter |
 | Outline & workspace symbols | Composables with their bindings nested |
 
 The interesting constraint: the parser is fatally strict, and a file you are

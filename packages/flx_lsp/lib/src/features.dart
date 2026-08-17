@@ -2,6 +2,7 @@ import 'package:flx_compiler/flx_compiler.dart';
 
 import 'analysis.dart';
 import 'catalog.dart';
+import 'dart_index.dart';
 
 /// LSP SymbolKind values, named.
 abstract final class SymbolKind {
@@ -182,12 +183,18 @@ String? _argumentBefore(Analysis analysis, Token token) {
   return tokens[index - 3].lexeme;
 }
 
-/// Go-to-definition. Resolves composable names across every open file.
+/// Go-to-definition.
+///
+/// Three kinds of name, in the order Dart itself would resolve them: a
+/// composable anywhere in the workspace, a `val` or parameter in this file,
+/// and — through [dartIndex] — the Dart underneath, which is where the hooks
+/// and the widgets live.
 List<Map<String, Object?>> definitionAt(
   Workspace workspace,
   Analysis analysis,
-  int offset,
-) {
+  int offset, {
+  DartIndex? dartIndex,
+}) {
   final token = tokenAt(analysis, offset);
   if (token == null || token.type != TokenType.identifier) return const [];
 
@@ -231,7 +238,44 @@ List<Map<String, Object?>> definitionAt(
       }
     }
   }
+
+  // A hook, a widget, a ViewModel — anything declared in Dart.
+  if (dartIndex != null && _isPlainReference(analysis, token)) {
+    final symbols = dartIndex.lookup(token.lexeme);
+    if (symbols.isNotEmpty) {
+      return [
+        // Several packages can declare the same name. The editor shows them
+        // all rather than picking one silently, best candidate first.
+        for (final symbol in symbols.take(_maxDartCandidates)) symbol.location,
+      ];
+    }
+  }
   return const [];
+}
+
+/// At most this many Dart candidates for one name.
+///
+/// A name like `Text` is declared in half the packages a Flutter app pulls in.
+/// Ten is enough for the real answer to be in the list and few enough that the
+/// list is still readable.
+const _maxDartCandidates = 10;
+
+/// Whether [token] is a name in its own right, rather than a member being read
+/// off something else or an argument label.
+///
+/// `vm.setSearch(...)` must not jump to some unrelated top-level `setSearch`,
+/// and neither must the `style` in `style: .caption`. The index only holds
+/// top-level declarations, so in both cases a hit would be a coincidence.
+bool _isPlainReference(Analysis analysis, Token token) {
+  final tokens = analysis.tokens;
+  var index = tokens.indexOf(token);
+  if (index < 0) {
+    index = tokens.indexWhere((t) => t.span.start == token.span.start);
+  }
+  if (index < 0) return true;
+  if (index > 0 && tokens[index - 1].lexeme == '.') return false;
+  if (index + 1 < tokens.length && tokens[index + 1].lexeme == ':') return false;
+  return true;
 }
 
 /// Outline: composables, with their bindings nested underneath.

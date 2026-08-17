@@ -55,8 +55,9 @@ Monorepo with path dependencies — no melos, no workspace tooling.
   BLoC, Provider and GetX at once. Guards the no-limitations rule.
 - `packages/flx_lsp/` — the language server. `analysis.dart` caches parses,
   `completion.dart` is token-based (never AST-based), `catalog.dart` is the
-  hand-written knowledge of hooks and widgets, `semantics.dart` bridges to the
-  Dart analyzer.
+  hand-written knowledge of hooks and widgets, `dart_index.dart` scans Dart
+  declarations so navigation reaches the runtime and Flutter, `semantics.dart`
+  bridges to the Dart analyzer.
 - `tools/vscode-flx/` — TextMate grammar plus the VS Code client.
 
 `lib/pages/*.flx` is the source of truth; generated `.dart` files are never
@@ -100,7 +101,7 @@ make run        # launch Ledger
 
 ## Working on the language server
 
-Two rules, both learned the hard way:
+Three rules, all learned the hard way:
 
 - **Completion must never depend on a parse.** The parser throws on the first
   error and a file being typed into is broken by definition — `Column { <here> }`
@@ -110,6 +111,12 @@ Two rules, both learned the hard way:
 - **The catalog is hand-written and will rot.** `catalog_drift_test.dart` reads
   packages/flx_runtime and fails when a public widget or hook is undocumented. If you
   add one to the runtime, document it — or add it to `notWidgets` deliberately.
+- **`dart_index.dart` scans Dart, so it must not read quoted code.** Half of a
+  `.flx` file is Dart — `useState`, `Button`, ViewModels — and the index is
+  what makes go-to-definition reach it. It matches declarations at column zero,
+  which is why it blanks strings and comments first: a `'''` fixture in a test
+  put `useState` at column zero, and F12 on the real hook opened the test.
+  Widen it and you widen what a wrong match costs.
 
 `shorthandValues` in the catalog must agree with `_shorthandTypes` in flxc's
 codegen, or the editor offers a completion the compiler then rejects; there is

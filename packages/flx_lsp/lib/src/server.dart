@@ -5,6 +5,7 @@ import 'package:flx_compiler/flx_compiler.dart';
 
 import 'analysis.dart';
 import 'completion.dart';
+import 'dart_index.dart';
 import 'documents.dart';
 import 'features.dart';
 import 'protocol.dart';
@@ -21,6 +22,17 @@ class FlxLanguageServer {
   final LspConnection connection;
   final documents = DocumentStore();
   final workspace = Workspace();
+
+  /// Top-level Dart declarations, for jumping to hooks, widgets and the app's
+  /// own classes.
+  final dartIndex = DartIndex();
+
+  /// Workspace roots, kept so dependencies can be indexed later.
+  final _roots = <String>[];
+
+  /// How far the Dart index has been widened: 0 the workspace, 1 Flutter as
+  /// well, 2 every package the workspace resolves.
+  int _indexReach = 0;
 
   bool _initialized = false;
   bool _shutdownRequested = false;
@@ -197,6 +209,10 @@ class FlxLanguageServer {
     final rootUri = params['rootUri'];
     if (roots.isEmpty && rootUri is String) roots.add(uriToPath(rootUri));
 
+    _roots
+      ..clear()
+      ..addAll(roots);
+
     for (final root in roots) {
       final directory = Directory(root);
       if (!directory.existsSync()) continue;
@@ -211,7 +227,43 @@ class FlxLanguageServer {
           // Unreadable file — skip it rather than abandoning the whole index.
         }
       }
+      dartIndex.addDirectory(root);
     }
+
+    // flx_runtime holds every hook and every widget the DSL offers, and it is
+    // routinely outside the folder being edited — `apps/ledger` is its own
+    // root. Resolving it now, rather than with the rest of the dependencies,
+    // keeps the most common jump off the slow path.
+    for (final root in roots) {
+      final runtime = resolvedPackages(root)['flx_runtime'];
+      if (runtime != null) dartIndex.addDirectory(runtime);
+    }
+  }
+
+  /// Widens the Dart index by one step, and reports whether there was one.
+  ///
+  /// Deferred because it is the expensive half — Flutter is 20MB of Dart, and
+  /// the rest of a Flutter app's packages another 40 — and a session that
+  /// never jumps into a package should never pay for it. In two steps because
+  /// the framework answers almost every miss: `Text` costs half a second,
+  /// and only a name that is in neither the workspace nor Flutter pays for
+  /// the long tail of transitive packages.
+  bool _widenIndex() {
+    if (_indexReach >= 2) return false;
+    _indexReach++;
+
+    for (final root in _roots) {
+      final packages = resolvedPackages(root);
+      if (_indexReach == 1) {
+        final flutter = packages['flutter'];
+        if (flutter != null) dartIndex.addDirectory(flutter);
+      } else {
+        for (final lib in packages.values) {
+          dartIndex.addDirectory(lib);
+        }
+      }
+    }
+    return true;
   }
 
   // ------------------------------------------------------------- lifecycle
@@ -311,7 +363,19 @@ class FlxLanguageServer {
   Object _definition(Map<String, Object?> params) {
     final resolved = _resolve(params);
     if (resolved == null) return const <Map<String, Object?>>[];
-    return definitionAt(workspace, resolved.analysis, resolved.offset);
+
+    // Each miss widens the search: the workspace, then Flutter, then every
+    // package. A name that is in none of them costs the full scan once.
+    while (true) {
+      final locations = definitionAt(
+        workspace,
+        resolved.analysis,
+        resolved.offset,
+        dartIndex: dartIndex,
+      );
+      if (locations.isNotEmpty) return locations;
+      if (!_widenIndex()) return locations;
+    }
   }
 
   Object _documentSymbol(Map<String, Object?> params) {

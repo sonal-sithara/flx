@@ -167,6 +167,27 @@ Map<String, Object?> positionOf(String text, int offset) {
   return {'line': line, 'character': offset - lineStart};
 }
 
+/// Sends [method] positioned on the [occurrence]th match of [needle] in
+/// [text] — the way a reader puts the caret on a name and presses F12.
+Future<Object?> at(
+  TestClient client,
+  String method,
+  String text,
+  Pattern needle, {
+  int occurrence = 0,
+  String uri = testUri,
+}) async {
+  var index = -1;
+  for (var i = 0; i <= occurrence; i++) {
+    index = text.indexOf(needle, index + 1);
+    if (index < 0) throw ArgumentError('no match $occurrence for $needle');
+  }
+  return client.request(method, {
+    'textDocument': {'uri': uri},
+    'position': positionOf(text, index + 1),
+  });
+}
+
 /// Requests completion at the `|` marker and returns the item labels.
 Future<List<String>> completionLabels(TestClient client, String marked) async {
   final (:text, :offset) = cursor(marked);

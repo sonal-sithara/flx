@@ -62,7 +62,8 @@ suite('flx extension', () => {
       'the .flx extension should map to the flx language'
     );
 
-    const extension = vscode.extensions.getExtension('flx.flx');
+    // publisher.name, from package.json — not the language id.
+    const extension = vscode.extensions.getExtension('SonalSithara.flx');
     assert.ok(extension, 'extension not found by id');
     await extension.activate();
     assert.ok(extension.isActive, 'extension did not activate');
@@ -208,6 +209,71 @@ suite('flx extension', () => {
 
     assert.ok(locations.length >= 1);
     assert.strictEqual(locations[0].range.start.line, 0, 'the declaration line');
+  });
+
+  test('goes to the definition of a hook, in the runtime it lives in', async () => {
+    // The half of a .flx file that is Dart. The workspace here is the
+    // repository root, so this is the real flx_runtime, resolved the way it
+    // would be in a checkout.
+    const text = 'composable A {\n  val count = useState(0)\n  Text("hi")\n}\n';
+    const uri = scratchFile('hook-definition.flx', text);
+    const document = await open(uri);
+
+    const locations = await waitFor(
+      () =>
+        vscode.commands.executeCommand(
+          'vscode.executeDefinitionProvider',
+          uri,
+          document.positionAt(text.indexOf('useState') + 2)
+        ),
+      { what: 'a hook definition' }
+    );
+
+    assert.ok(locations.length >= 1, 'no definition for useState');
+    const target = locations[0].uri.fsPath;
+    assert.match(target, /flx_runtime\/lib\/src\/core\.dart$/, target);
+  });
+
+  test('goes to the definition of a widget class', async () => {
+    const text = 'composable A {\n  Column {\n    Button("go") { }\n  }\n}\n';
+    const uri = scratchFile('widget-definition.flx', text);
+    const document = await open(uri);
+
+    const locations = await waitFor(
+      () =>
+        vscode.commands.executeCommand(
+          'vscode.executeDefinitionProvider',
+          uri,
+          document.positionAt(text.indexOf('Button') + 2)
+        ),
+      { what: 'a widget definition' }
+    );
+
+    assert.ok(locations.length >= 1, 'no definition for Button');
+    assert.match(locations[0].uri.fsPath, /flx_runtime\/lib\/src\/widgets\.dart$/);
+  });
+
+  test('goes to the definition of a Flutter widget', async () => {
+    // Flutter is not indexed at startup — 20MB of Dart nobody has asked for
+    // yet. The first jump that misses pays for it, so this also covers that
+    // path being taken at all.
+    const text = 'composable A {\n  Column {\n    Text("hi")\n  }\n}\n';
+    const uri = scratchFile('flutter-definition.flx', text);
+    const document = await open(uri);
+
+    const locations = await waitFor(
+      () =>
+        vscode.commands.executeCommand(
+          'vscode.executeDefinitionProvider',
+          uri,
+          document.positionAt(text.indexOf('Text("hi")') + 2)
+        ),
+      { what: 'a Flutter definition' }
+    );
+
+    assert.ok(locations.length >= 1, 'no definition for Text');
+    const paths = locations.map((l) => l.uri.fsPath).join('\n');
+    assert.match(paths, /flutter\/lib\/src\/widgets\/text\.dart/, paths);
   });
 
   test('lists composables in the outline', async () => {
