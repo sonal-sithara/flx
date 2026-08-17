@@ -140,6 +140,22 @@ class Parser {
         hint: 'add one, e.g.  composable Greeting { Text("hi") }',
       );
     }
+
+    // Two composables of the same name became two Dart classes of the same
+    // name, which fails much later and much less clearly.
+    final seen = <String, ComposableDecl>{};
+    for (final composable in composables) {
+      final earlier = seen[composable.name];
+      if (earlier != null) {
+        throw FlxError(
+          "'${composable.name}' is declared twice in this file",
+          composable.span,
+          hint: 'each composable becomes a Dart class, so the names have to '
+              'be distinct',
+        );
+      }
+      seen[composable.name] = composable;
+    }
     return FlxFile(
       source: source,
       imports: imports,
@@ -403,8 +419,21 @@ class Parser {
 
   void _validateRouteParams(String? route, List<Param> params, Span span) {
     if (route == null) return;
+    final routeParams = routeParamsOf(route);
+    final duplicates = <String>{};
+    for (final rp in routeParams) {
+      if (!duplicates.add(rp)) {
+        throw FlxError(
+          "route '$route' captures ':$rp' twice",
+          span,
+          hint: 'only the last one would survive matching — give them '
+              'different names',
+        );
+      }
+    }
+
     final declared = params.map((p) => p.name).toSet();
-    for (final rp in routeParamsOf(route)) {
+    for (final rp in routeParams) {
       if (!declared.contains(rp)) {
         throw FlxError(
           "route '$route' captures ':$rp' but the composable has no "
@@ -604,7 +633,7 @@ class Parser {
     if (_current.isIdent('if')) return _parseIf();
     if (_current.isIdent('for')) return _parseFor();
     if (_check('(')) return _parseRawChild();
-    if (_check('...')) return _parseSpreadChild();
+    if (_check('...') || _check('...?')) return _parseSpreadChild();
     return _parseWidget();
   }
 
@@ -640,7 +669,8 @@ class Parser {
 
   /// `...expression` — splices a list of widgets into the children.
   Node _parseSpreadChild() {
-    final start = _expect('...');
+    // `...?` splices a list that may be null.
+    final start = _check('...?') ? _advance() : _expect('...');
     final tokens = _captureExpression();
     if (tokens.isEmpty) {
       throw FlxError(
@@ -653,6 +683,7 @@ class Parser {
       expression: serialize(tokens),
       span: _spanFrom(start),
       isSpread: true,
+      spreadOperator: start.lexeme,
     );
   }
 
@@ -750,6 +781,14 @@ class Parser {
     String? indexVariable;
 
     if (_check('{')) {
+      if (_lambdaAhead() &&
+          (layoutWidgets.containsKey(base) || containerWidgets.contains(base))) {
+        throw FlxError(
+          'the block of $name holds children, not a builder',
+          _current.span,
+          hint: 'drop the parameters and the arrow: $name { ... }',
+        );
+      }
       if (_lambdaAhead()) {
         // `LayoutBuilder { ctx, box => ... }` — a trailing block that produces
         // a widget. It becomes the `builder:` argument, which is what every

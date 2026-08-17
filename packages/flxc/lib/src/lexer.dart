@@ -4,6 +4,7 @@ import 'token.dart';
 
 /// Multi-character operators, longest first so `??=` wins over `??`.
 const _operators = <String>[
+  '...?',
   '...',
   '??=',
   '>>=',
@@ -119,13 +120,29 @@ class Lexer {
     }
 
     if (_isDigit(c)) {
-      while (_i < _s.length && (_isDigit(_s[_i]) || _s[_i] == '.')) {
-        // Don't swallow the '.' of `1.toString()` style member access —
-        // only consume it when a digit follows.
-        if (_s[_i] == '.' && !_isDigit(_peek(1) ?? '')) break;
+      // Hex, which is how every colour is written: 0xFF6750A4. Scanning only
+      // decimal digits split this into `0` and the identifier `xFF6750A4`,
+      // and the two were then re-emitted with a space between them.
+      if (c == '0' && (_peek(1) == 'x' || _peek(1) == 'X')) {
+        _i += 2;
+        while (_i < _s.length && (_isHexDigit(_s[_i]) || _s[_i] == '_')) {
+          _i++;
+        }
+        return _token(TokenType.number, start);
+      }
+
+      // `_` is a digit separator in Dart: 1_000_000.
+      while (_i < _s.length && (_isDigit(_s[_i]) || _s[_i] == '_')) {
         _i++;
       }
-      // Exponent / hex suffixes are rare in UI code but cheap to accept.
+      // Only take the '.' when a digit follows, so `1.toString()` still parses
+      // as a member access.
+      if (_i < _s.length && _s[_i] == '.' && _isDigit(_peek(1) ?? '')) {
+        _i++;
+        while (_i < _s.length && (_isDigit(_s[_i]) || _s[_i] == '_')) {
+          _i++;
+        }
+      }
       if (_i < _s.length && (_s[_i] == 'e' || _s[_i] == 'E')) {
         final save = _i;
         _i++;
@@ -244,6 +261,12 @@ class Lexer {
       Token(type, _s.substring(start, _i), Span(source, start, _i));
 
   static bool _isDigit(String c) => c.codeUnitAt(0) ^ 0x30 <= 9;
+
+  static bool _isHexDigit(String c) {
+    if (_isDigit(c)) return true;
+    final u = c.codeUnitAt(0) | 0x20; // fold to lower case
+    return u >= 0x61 && u <= 0x66; // a-f
+  }
 
   static bool _isIdentStart(String c) {
     final u = c.codeUnitAt(0);

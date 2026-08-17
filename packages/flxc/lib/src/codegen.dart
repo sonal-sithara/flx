@@ -422,7 +422,7 @@ class CodeGenerator {
       // `...items` becomes a collection spread; `(expr)` is passed straight
       // through as the widget it evaluates to.
       RawNode() => node.isSpread
-          ? '$pad...${node.expression}'
+          ? '$pad${node.spreadOperator}${node.expression}'
           : '$pad${node.expression}',
     };
   }

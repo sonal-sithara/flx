@@ -66,7 +66,7 @@ hand-edited.
 ```bash
 make build      # transpile all .flx + generate routes.g.dart
 make watch      # rebuild Ledger's pages on save
-make test       # 325 tests: compiler goldens, server, runtime, apps
+make test       # 343 tests: compiler goldens, server, runtime, apps
 make ci         # analyze + build + stale-codegen check + test
 make run        # launch Ledger
 ```

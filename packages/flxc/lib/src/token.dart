@@ -3,7 +3,7 @@ import 'source.dart';
 enum TokenType { identifier, string, number, punct, eof }
 
 class Token {
-  const Token(this.type, this.lexeme, this.span);
+  Token(this.type, this.lexeme, this.span);
 
   final TokenType type;
 
@@ -11,6 +11,10 @@ class Token {
   /// interpolations intact so they can be re-emitted into Dart verbatim.
   final String lexeme;
   final Span span;
+
+  /// Set by the serializer: true when this `-`/`+` is a sign rather than a
+  /// binary operator, so it binds tightly to the number after it.
+  bool isUnary = false;
 
   bool get isEof => type == TokenType.eof;
 

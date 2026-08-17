@@ -243,7 +243,15 @@ class IfNode implements Node {
 /// The escape hatch. Anything the DSL has no syntax for can still be written,
 /// so a missing feature is never a wall.
 class RawNode implements Node {
-  RawNode({required this.expression, required this.span, this.isSpread = false});
+  RawNode({
+    required this.expression,
+    required this.span,
+    this.isSpread = false,
+    this.spreadOperator = '...',
+  });
+
+  /// `...` or `...?`, the null-aware form.
+  final String spreadOperator;
 
   /// Serialized Dart, without the wrapping parentheses.
   final String expression;

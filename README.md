@@ -41,7 +41,7 @@ make setup     # fetch deps for all four packages
 make build     # .flx -> .dart, and regenerate routes.g.dart
 make run       # build, then launch Ledger
 make watch     # rebuild on every save
-make test      # 325 tests across compiler, server, runtime and apps
+make test      # 343 tests across compiler, server, runtime and apps
 ```
 
 ## The compiler
@@ -326,7 +326,7 @@ Setup is in [tools/vscode-flx](tools/vscode-flx).
 
 ## Status
 
-Production-solid for in-house use: 325 tests, a language server, real
+Production-solid for in-house use: 343 tests, a language server, real
 diagnostics that land on the line you wrote, watch mode, and
 [Ledger](apps/ledger) — a complete expense tracker written entirely in the DSL,
 building for web, iOS, Android and macOS.

@@ -21,6 +21,7 @@ const _typeTokens = {',', '.', '<', '>', '?', '(', ')'};
 String serialize(List<Token> tokens) {
   final generics = _findGenerics(tokens);
   final ternaryColons = _findTernaryColons(tokens);
+  _markUnarySigns(tokens);
   final buf = StringBuffer();
 
   for (var i = 0; i < tokens.length; i++) {
@@ -81,7 +82,17 @@ Set<int> _findTernaryColons(List<Token> tokens) {
   return marked;
 }
 
+/// Positions after which a `-` or `+` is a sign, not an operator.
+const _beforeUnary = {
+  '(', '[', '{', ',', ':', '=', '=>', '->', '??', '&&', '||', '==', '!=',
+  '<', '>', '<=', '>=', '+', '-', '*', '/', '%', '?', ';', '...', '...?',
+};
+
 bool _needsSpace(Token prev, Token t) {
+  // `-8`, not `- 8`. Unary only: `a - b` keeps its spaces.
+  if ((prev.lexeme == '-' || prev.lexeme == '+') && prev.isUnary) return false;
+  // `...?items`, not `...? items`.
+  if (prev.lexeme == '...' || prev.lexeme == '...?') return false;
   // A comma always breathes, except when the list closes right after it
   // (a trailing comma before `)` or `]`).
   if (prev.lexeme == ',') return t.lexeme != ')' && t.lexeme != ']';
@@ -130,4 +141,16 @@ Set<int> _findGenerics(List<Token> tokens) {
     }
   }
   return marked;
+}
+
+
+/// Flags each `-`/`+` that is a sign rather than a binary operator, by what
+/// precedes it.
+void _markUnarySigns(List<Token> tokens) {
+  for (var i = 0; i < tokens.length; i++) {
+    final lexeme = tokens[i].lexeme;
+    if (lexeme != '-' && lexeme != '+') continue;
+    tokens[i].isUnary =
+        i == 0 || _beforeUnary.contains(tokens[i - 1].lexeme);
+  }
 }

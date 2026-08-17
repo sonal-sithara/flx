@@ -376,6 +376,162 @@ void main() {
     });
   });
 
+  group('lexing and file-level hazards', () {
+    String compile(String src) =>
+        compiler.compileSource(Source('test.flx', src));
+
+    test('hex literals survive — every colour is written that way', () {
+      // Scanning only decimal digits split 0xFF00AA into `0` and the
+      // identifier `xFF00AA`, then re-joined them with a space.
+      final dart = compile('composable A {\n  Box(c: 0xFF00AA)\n}\n');
+      expect(dart, contains('c: 0xFF00AA'));
+    });
+
+    test('digit separators survive', () {
+      final dart = compile('composable A {\n  Box(n: 1_000_000)\n}\n');
+      expect(dart, contains('n: 1_000_000'));
+    });
+
+    test('a sign binds to its number, an operator does not', () {
+      final dart = compile(
+        'composable A {\n  Box(a: -8, b: -1.5, c: x - y)\n}\n',
+      );
+      expect(dart, contains('a: -8'));
+      expect(dart, contains('b: -1.5'));
+      expect(dart, contains('c: x - y'));
+    });
+
+    test('exponents and member access on a number still work', () {
+      final dart = compile(
+        'composable A {\n  Box(a: 1.5e3, b: 2E-2, c: 1.toString())\n}\n',
+      );
+      expect(dart, contains('a: 1.5e3'));
+      expect(dart, contains('b: 2E-2'));
+      expect(dart, contains('c: 1.toString()'));
+    });
+
+    test('null-aware spread keeps its operator', () {
+      final dart = compile(
+        'composable A {\n  Column {\n    ...?maybe\n  }\n}\n',
+      );
+      expect(dart, contains('...?maybe'));
+    });
+
+    test('two composables with the same name are rejected', () {
+      // This produced two Dart classes of the same name, failing much later
+      // and much less clearly.
+      expectError(
+        'composable A {\n  Text("one")\n}\n\n'
+        'composable A {\n  Text("two")\n}\n',
+        message: "'A' is declared twice in this file",
+        hint: contains('distinct'),
+      );
+    });
+
+    test('a route capturing the same name twice is rejected', () {
+      expectError(
+        '@page("/u/:id/p/:id")\ncomposable A(id) {\n  Text(id)\n}\n',
+        message: contains("captures ':id' twice"),
+        hint: contains('only the last one'),
+      );
+    });
+
+    test('a builder block on a container widget is rejected', () {
+      expectError(
+        'composable A {\n  Screen(title: "x") { ctx =>\n    Text("hi")\n  }\n}\n',
+        message: 'the block of Screen holds children, not a builder',
+        hint: contains('drop the parameters'),
+      );
+    });
+
+    test('comments between arguments are ignored', () {
+      final dart = compile(
+        'composable A {\n  Tile(\n    title: "hi", // trailing\n'
+        '    /* block */ subtitle: "there",\n  )\n}\n',
+      );
+      expect(dart, contains('Tile(title: "hi", subtitle: "there")'));
+    });
+
+    test('triple-quoted strings keep their newlines', () {
+      final dart = compile(
+        'composable A {\n  Text("""one\ntwo""")\n}\n',
+      );
+      expect(dart, contains('"""one\ntwo"""'));
+    });
+
+    test('unicode in strings survives', () {
+      final dart = compile(
+        'composable A {\n  Text("héllo 🎉 日本語")\n}\n',
+      );
+      expect(dart, contains('héllo 🎉 日本語'));
+    });
+  });
+
+  group('whitespace and line endings', () {
+    String compile(String src) =>
+        compiler.compileSource(Source('test.flx', src));
+
+    test('CRLF files behave like LF ones', () {
+      // Bindings end at their line, so the line arithmetic has to survive
+      // Windows endings.
+      final dart = compile(
+        'composable A {\r\n  val vm = useViewModel<V>()\r\n'
+        '  vm.warmUp();\r\n  Text("hi")\r\n}\r\n',
+      );
+      expect(dart, contains('final vm = useViewModel<V>();'));
+      expect(dart, contains('vm.warmUp();'));
+    });
+
+    test('tabs indent as well as spaces', () {
+      final dart = compile(
+        'composable A {\n\tval x = useState(0)\n\tText("hi")\n}\n',
+      );
+      expect(dart, contains('final x = useState(0);'));
+    });
+
+    test('an expression wrapped after an operator stays one binding', () {
+      final dart = compile(
+        'composable A {\n  val total = a +\n      b +\n      c\n'
+        '  Text("hi")\n}\n',
+      );
+      expect(dart, contains('final total = a + b + c;'));
+    });
+
+    test('an expression wrapped before an operator stays one binding', () {
+      final dart = compile(
+        'composable A {\n  val total = a\n      + b\n      + c\n'
+        '  Text("hi")\n}\n',
+      );
+      expect(dart, contains('final total = a + b + c;'));
+    });
+
+    test('a multi-line collection stays one binding', () {
+      final dart = compile(
+        'composable A {\n  val items = [\n    1,\n    2,\n  ]\n'
+        '  Text("hi")\n}\n',
+      );
+      expect(dart, contains('final items = [1, 2,];'));
+    });
+
+    test('a file with no trailing newline parses', () {
+      expect(compile('composable A {\n  Text("hi")\n}'), contains('class A'));
+    });
+
+    test('deep nesting does not blow the stack', () {
+      final buffer = StringBuffer('composable A {\n');
+      for (var i = 0; i < 60; i++) {
+        buffer.write('Column {\n');
+      }
+      buffer.write('Text("deep")\n');
+      for (var i = 0; i < 60; i++) {
+        buffer.write('}\n');
+      }
+      buffer.write('}\n');
+
+      expect(compile(buffer.toString()), contains('Text("deep")'));
+    });
+  });
+
   group('codegen', () {
     test('unknown shorthand type', () {
       expectError(
