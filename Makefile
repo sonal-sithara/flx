@@ -52,6 +52,7 @@ lsp:
 # A compiled server starts in milliseconds instead of seconds. Point
 # flx.server.path at the result.
 lsp-build:
+	@mkdir -p packages/flx_lsp/build
 	cd packages/flx_lsp && dart compile exe bin/flx_lsp.dart -o build/flx_lsp
 	@echo "built packages/flx_lsp/build/flx_lsp"
 
