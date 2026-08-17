@@ -3,7 +3,10 @@ description: >-
   The flx runtime: a hooks engine, fluent modifiers, layout extensions,
   a router and a DI container for Flutter. Zero pub dependencies.
 version: 0.1.0
-publish_to: none
+repository: https://github.com/sonalsithara/flx
+issue_tracker: https://github.com/sonalsithara/flx/issues
+homepage: https://github.com/sonalsithara/flx
+topics: ['flutter', 'ui', 'hooks', 'state-management']
 
 environment:
   sdk: ^3.6.0

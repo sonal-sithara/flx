@@ -1,4 +1,4 @@
-import 'package:flxc/src/source.dart';
+import 'package:flxc/flxc.dart';
 
 /// An open `.flx` file, plus conversion between LSP positions and offsets.
 ///

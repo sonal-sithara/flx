@@ -1,0 +1,6 @@
+# Everything not needed at runtime.
+.vscode/**
+.gitignore
+node_modules/.bin/**
+**/*.map
+**/.DS_Store

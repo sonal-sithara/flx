@@ -7,30 +7,47 @@ const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
 let client;
 
 /**
- * Works out how to launch the server.
+ * Works out how to launch the server, most specific first: an explicit
+ * setting, then a bundled binary, then the source checkout.
  *
- * A compiled executable starts in milliseconds; `dart run` takes a second or
- * two but always matches the checkout, which matters while the server itself
- * is under development. So source is the default and the binary is opt-in.
+ * A released VSIX carries a binary for its platform, so an installed
+ * extension needs neither Dart nor a copy of this repository. Running from
+ * source is the fallback, for working on the server itself — slower to start,
+ * but always matching the checkout.
  */
-function resolveServerOptions(folder) {
+function resolveServerOptions(context, folder) {
   const config = vscode.workspace.getConfiguration('flx');
-  const explicit = config.get('server.path', '').trim();
 
+  // 1. An explicit path always wins.
+  const explicit = config.get('server.path', '').trim();
   if (explicit) {
     return { command: explicit, args: [], transport: TransportKind.stdio };
   }
 
-  const packagePath = config.get('server.packagePath', 'packages/flx_lsp');
-  const entry = path.join(folder, packagePath, 'bin', 'flx_lsp.dart');
-
-  if (!fs.existsSync(entry)) {
-    throw new Error(
-      `flx: cannot find the language server at ${entry}. ` +
-        'Set "flx.server.packagePath" or "flx.server.path" in settings.'
-    );
+  // 2. A bundled binary, which is what a released VSIX carries. Built per
+  //    platform by .github/workflows/release.yml, because an installed
+  //    extension cannot run the server from source — a user's Flutter project
+  //    has no packages/flx_lsp.
+  const bundled = path.join(
+    context.extensionPath,
+    'server',
+    process.platform === 'win32' ? 'flx_lsp.exe' : 'flx_lsp'
+  );
+  if (fs.existsSync(bundled)) {
+    return { command: bundled, args: [], transport: TransportKind.stdio };
   }
 
+  // 3. From source, for working on the server itself. Slower to start, but
+  //    always matches the checkout.
+  const packagePath = config.get('server.packagePath', 'packages/flx_lsp');
+  const entry = path.join(folder, packagePath, 'bin', 'flx_lsp.dart');
+  if (!fs.existsSync(entry)) {
+    throw new Error(
+      'flx: no language server found. This build has no bundled binary and ' +
+        `there is no source checkout at ${entry}. Set "flx.server.path" to a ` +
+        'compiled flx_lsp, or "flx.server.packagePath" to the package.'
+    );
+  }
   return {
     command: 'dart',
     args: ['run', entry],
@@ -39,14 +56,14 @@ function resolveServerOptions(folder) {
   };
 }
 
-function start() {
+function start(context) {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) return;
   const root = folders[0].uri.fsPath;
 
   let serverOptions;
   try {
-    serverOptions = resolveServerOptions(root);
+    serverOptions = resolveServerOptions(context, root);
   } catch (error) {
     vscode.window.showErrorMessage(String(error.message ?? error));
     return;
@@ -83,12 +100,12 @@ async function stop() {
 }
 
 function activate(context) {
-  start();
+  start(context);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('flx.restartServer', async () => {
       await stop();
-      start();
+      start(context);
       vscode.window.showInformationMessage('flx: language server restarted');
     })
   );
@@ -102,7 +119,7 @@ function activate(context) {
         return;
       }
       await stop();
-      start();
+      start(context);
     })
   );
 }

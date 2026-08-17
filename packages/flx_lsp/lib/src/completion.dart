@@ -1,4 +1,4 @@
-import 'package:flxc/src/token.dart';
+import 'package:flxc/flxc.dart';
 
 import 'analysis.dart';
 import 'catalog.dart';

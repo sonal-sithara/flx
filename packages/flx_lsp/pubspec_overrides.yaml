@@ -1,0 +1,6 @@
+# Local development only — never published, and ignored by consumers.
+# Keeps flx_lsp building against the flxc in this checkout rather than the
+# last release.
+dependency_overrides:
+  flxc:
+    path: ../flxc

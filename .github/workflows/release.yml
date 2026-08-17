@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# A published VS Code extension cannot run the server from source: a user's
+# Flutter project has no packages/flx_lsp. So each platform builds a native
+# binary, and each VSIX carries the one for its platform.
+jobs:
+  server:
+    name: flx_lsp ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest,   target: darwin-arm64, arch: arm64 }
+          - { os: macos-13,       target: darwin-x64,   arch: x64 }
+          - { os: ubuntu-latest,  target: linux-x64,    arch: x64 }
+          - { os: windows-latest, target: win32-x64,    arch: x64, ext: .exe }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - run: dart pub get
+        working-directory: packages/flxc
+      - run: dart pub get
+        working-directory: packages/flx_lsp
+
+      - name: Compile
+        working-directory: packages/flx_lsp
+        run: |
+          mkdir -p build
+          dart compile exe bin/flx_lsp.dart -o build/flx_lsp${{ matrix.ext }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.target }}
+          path: packages/flx_lsp/build/flx_lsp${{ matrix.ext }}
+
+  extension:
+    name: vsix ${{ matrix.target }}
+    needs: server
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [darwin-arm64, darwin-x64, linux-x64, win32-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-${{ matrix.target }}
+          path: tools/vscode-flx/server
+
+      - name: Package
+        working-directory: tools/vscode-flx
+        run: |
+          chmod +x server/flx_lsp* || true
+          npm install
+          npx --yes @vscode/vsce package --target ${{ matrix.target }} \
+            --out flx-${{ matrix.target }}.vsix
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix-${{ matrix.target }}
+          path: tools/vscode-flx/*.vsix
+
+  publish:
+    name: attach to release
+    needs: extension
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: vsix-*, merge-multiple: true, path: dist }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.vsix
+          generate_release_notes: true

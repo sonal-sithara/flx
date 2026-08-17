@@ -3,7 +3,10 @@ description: >-
   Language server for .flx — diagnostics, completion, hover, go-to-definition
   and document symbols, speaking LSP over stdio.
 version: 0.1.0
-publish_to: none
+repository: https://github.com/sonalsithara/flx
+issue_tracker: https://github.com/sonalsithara/flx/issues
+homepage: https://github.com/sonalsithara/flx
+topics: ['flutter', 'dsl', 'lsp', 'language-server']
 
 environment:
   sdk: ^3.6.0
@@ -12,8 +15,11 @@ dependencies:
   # The compiler is the language model: its lexer, parser and spans are what
   # the server reasons about. No third-party dependencies, same as everything
   # else here — LSP framing is a Content-Length header and JSON.
-  flxc:
-    path: ../flxc
+  #
+  # A version constraint rather than a path, because a published package
+  # cannot ship one. pubspec_overrides.yaml points it back at the sibling
+  # directory for local work; pub ignores that file when publishing.
+  flxc: ^0.1.0
 
 dev_dependencies:
   test: ^1.25.0

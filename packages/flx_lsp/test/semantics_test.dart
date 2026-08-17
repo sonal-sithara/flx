@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:flx_lsp/src/documents.dart';
 import 'package:flx_lsp/src/semantics.dart';
-import 'package:flxc/src/dart_analysis.dart';
-import 'package:flxc/src/source.dart';
-import 'package:flxc/src/sourcemap.dart';
+import 'package:flxc/flxc.dart';
 import 'package:test/test.dart';
 
 /// A bridge that returns canned results instead of spawning `dart analyze`.

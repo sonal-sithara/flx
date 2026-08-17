@@ -1,10 +1,6 @@
 import 'dart:io';
 
-import 'package:flxc/src/compiler.dart';
-import 'package:flxc/src/dart_analysis.dart';
-import 'package:flxc/src/diagnostics.dart';
-import 'package:flxc/src/source.dart';
-import 'package:flxc/src/watcher.dart';
+import 'package:flxc/flxc.dart';
 
 const _usage = '''
 flxc — the flx compiler

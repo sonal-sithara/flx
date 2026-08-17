@@ -1,9 +1,4 @@
-import 'package:flxc/src/ast.dart';
-import 'package:flxc/src/diagnostics.dart';
-import 'package:flxc/src/lexer.dart';
-import 'package:flxc/src/parser.dart';
-import 'package:flxc/src/source.dart';
-import 'package:flxc/src/token.dart';
+import 'package:flxc/flxc.dart';
 
 import 'documents.dart';
 

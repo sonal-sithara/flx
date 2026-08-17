@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: analyze, build, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Fetch dependencies
+        run: make setup
+
+      # analyze every package, transpile every .flx, fail if the committed
+      # Dart is stale relative to its source, then run all 343 tests.
+      - name: make ci
+        run: make ci
+
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, target: web }
+          - { os: macos-latest, target: macos }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: make setup
+      - run: make build
+
+      # A green test suite does not prove the generated code compiles for a
+      # real target, so build the flagship app as well.
+      - run: flutter build ${{ matrix.target }} --release
+        working-directory: apps/ledger

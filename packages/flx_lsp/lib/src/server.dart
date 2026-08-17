@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flxc/src/dart_analysis.dart';
+import 'package:flxc/flxc.dart';
 
 import 'analysis.dart';
 import 'completion.dart';

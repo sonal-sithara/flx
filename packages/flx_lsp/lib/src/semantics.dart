@@ -1,10 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flxc/src/compiler.dart';
-import 'package:flxc/src/dart_analysis.dart';
-import 'package:flxc/src/diagnostics.dart';
-import 'package:flxc/src/sourcemap.dart';
+import 'package:flxc/flxc.dart';
 
 import 'documents.dart';
 

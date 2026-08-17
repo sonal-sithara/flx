@@ -1,7 +1,4 @@
-import 'package:flxc/src/compiler.dart';
-import 'package:flxc/src/dart_analysis.dart';
-import 'package:flxc/src/source.dart';
-import 'package:flxc/src/sourcemap.dart';
+import 'package:flxc/flxc.dart';
 import 'package:test/test.dart';
 
 /// The mapper is a heuristic, so these tests pin down both what it gets right
