@@ -9,7 +9,7 @@ import 'package:flx_lsp/src/server.dart';
 /// anything diagnostic must go to stderr or it corrupts the stream.
 Future<void> main(List<String> args) async {
   if (args.contains('--version')) {
-    stdout.writeln('flx_lsp 0.2.0');
+    stdout.writeln('flx_lsp 0.3.0');
     return;
   }
   if (args.contains('--help') || args.contains('-h')) {

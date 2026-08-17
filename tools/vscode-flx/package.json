@@ -2,7 +2,7 @@
   "name": "flx",
   "displayName": "flx — Flutter DSL",
   "description": "Language support for .flx — syntax highlighting, diagnostics, completion, hover and go-to-definition",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "SonalSithara",
   "icon": "icon.png",
   "galleryBanner": {

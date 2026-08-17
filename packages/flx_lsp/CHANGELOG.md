@@ -1,12 +1,12 @@
 # Changelog
 
-## 0.2.0
+## 0.3.0
 
 - Go-to-definition now reaches the Dart underneath. A new `dart_index.dart`
   scans Dart declarations across the workspace, the runtime and the Flutter
   SDK, so F12 on a hook, widget or ViewModel opens the real source instead of
   stopping at the `.flx` file boundary.
-- Requires `flx_compiler` ^0.2.0.
+- Requires `flx_compiler` ^0.3.0.
 
 ## 0.1.0
 

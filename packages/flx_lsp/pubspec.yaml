@@ -2,7 +2,7 @@ name: flx_lsp
 description: >-
   Language server for .flx — diagnostics, completion, hover, go-to-definition
   and document symbols, speaking LSP over stdio.
-version: 0.2.0
+version: 0.3.0
 repository: https://github.com/sonal-sithara/flx
 issue_tracker: https://github.com/sonal-sithara/flx/issues
 homepage: https://github.com/sonal-sithara/flx
@@ -19,7 +19,7 @@ dependencies:
   # A version constraint rather than a path, because a published package
   # cannot ship one. pubspec_overrides.yaml points it back at the sibling
   # directory for local work; pub ignores that file when publishing.
-  flx_compiler: ^0.2.0
+  flx_compiler: ^0.3.0
 
 dev_dependencies:
   test: ^1.25.0

@@ -79,7 +79,7 @@ removing.
 Tag a version and the release workflow does the rest:
 
 ```bash
-git tag v0.2.0 && git push --tags
+git tag v0.3.0 && git push --tags
 ```
 
 `.github/workflows/release.yml` compiles `flx_lsp` for darwin-arm64,
@@ -153,6 +153,6 @@ ln -s "$PWD/tools/vscode-flx" ~/.vscode/extensions/flx
   never replaced, so let CI go green first.
 - pub.dev scores packages within an hour. Expect points off for the API being
   new and for example coverage.
-- Version numbers are all `0.2.0`, packages and extension alike. Below 1.0,
+- Version numbers are all `0.3.0`, packages and extension alike. Below 1.0,
   semver treats every minor bump as potentially breaking, which is honest for
   where this is.

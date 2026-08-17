@@ -153,7 +153,7 @@ class FlxLanguageServer {
           'documentSymbolProvider': true,
           'workspaceSymbolProvider': true,
         },
-        'serverInfo': {'name': 'flx_lsp', 'version': '0.2.0'},
+        'serverInfo': {'name': 'flx_lsp', 'version': '0.3.0'},
       };
 
   /// Reads initializationOptions.

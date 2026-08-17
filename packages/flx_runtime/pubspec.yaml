@@ -2,7 +2,7 @@ name: flx_runtime
 description: >-
   The flx runtime: a hooks engine, fluent modifiers, layout extensions,
   a router and a DI container for Flutter. Zero pub dependencies.
-version: 0.2.0
+version: 0.3.0
 repository: https://github.com/sonal-sithara/flx
 issue_tracker: https://github.com/sonal-sithara/flx/issues
 homepage: https://github.com/sonal-sithara/flx

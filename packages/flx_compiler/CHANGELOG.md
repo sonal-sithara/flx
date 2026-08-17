@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0
+## 0.3.0
 
 No compiler changes. The version moves in step with `flx_lsp`, which depends on
 this package for its lexer, parser and spans, so the family stays on one

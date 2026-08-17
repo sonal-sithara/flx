@@ -11,7 +11,7 @@ else.
 
 ```yaml
 dependencies:
-  flx_runtime: ^0.2.0
+  flx_runtime: ^0.3.0
 ```
 
 ```dart

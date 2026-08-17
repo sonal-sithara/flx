@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0
+## 0.3.0
 
 No runtime changes. The version moves in step with the rest of the family, so
 `flx_runtime`, `flx_compiler` and `flx_lsp` stay on one number.
