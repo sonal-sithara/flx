@@ -2,7 +2,7 @@ name: flx_compiler
 description: >-
   The flx compiler. Transpiles .flx DSL files into Flutter Dart source,
   and generates the route table from @page annotations.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/sonal-sithara/flx
 issue_tracker: https://github.com/sonal-sithara/flx/issues
 homepage: https://github.com/sonal-sithara/flx
