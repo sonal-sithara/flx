@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../../assets/flx-icon-128.png" width="88" alt="flx">
+</p>
+
 # Ledger
 
 A personal expense tracker, built entirely in the flx DSL. This is the

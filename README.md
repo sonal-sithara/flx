@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="assets/flx-banner.png" width="760"
+       alt="flx — write Flutter that reads like Compose">
+</p>
+
 # flx
 
 A Compose/Next.js-style DSL for Flutter. You write `.flx`; `flxc` transpiles it

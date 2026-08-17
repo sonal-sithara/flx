@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sonal-sithara/flx/main/assets/flx-icon-128.png"
+       width="88" alt="flx">
+</p>
+
 # flx_runtime
 
 The runtime half of [flx](https://github.com/sonal-sithara/flx), a

@@ -1,0 +1,51 @@
+<!--
+  README header. Rendered to flx-banner.png (fonts are baked into the PNG, so
+  the image looks the same everywhere); the dark card reads correctly on both
+  GitHub themes.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 260" width="1000" height="260"
+     role="img" aria-label="flx — a Compose-style DSL for Flutter">
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="1000" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#141D33"/>
+      <stop offset="1" stop-color="#070B16"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="70" y1="66" x2="186" y2="194" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2DD4E8"/>
+      <stop offset="0.5" stop-color="#4C6BF5"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="1000" y1="0" x2="600" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4C6BF5" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#4C6BF5" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cardClip"><rect width="1000" height="260" rx="28"/></clipPath>
+    <clipPath id="tileClip"><rect x="70" y="66" width="128" height="128" rx="30"/></clipPath>
+  </defs>
+
+  <rect width="1000" height="260" rx="28" fill="url(#card)"/>
+  <g clip-path="url(#cardClip)">
+    <rect width="1000" height="260" fill="url(#glow)"/>
+  </g>
+
+  <!-- mark -->
+  <rect x="70" y="66" width="128" height="128" rx="30" fill="url(#tile)"/>
+  <g clip-path="url(#tileClip)">
+    <path d="M 62 202 L 206 106 L 206 202 Z" fill="#080C1A" opacity="0.14"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"
+     transform="translate(74,65)">
+    <path d="M 50 32 C 40 25 32 31 32 45 L 32 92"/>
+    <path d="M 18 54 L 50 54"/>
+    <path d="M 62 32 L 62 92"/>
+    <path d="M 76 62 L 102 92"/>
+    <path d="M 102 62 L 76 92"/>
+  </g>
+
+  <!-- wordmark -->
+  <g font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, sans-serif">
+    <text x="248" y="128" font-size="78" font-weight="700" letter-spacing="-2" fill="#F4F7FF">flx</text>
+    <text x="250" y="172" font-size="23" font-weight="500" fill="#93A6CC">Write Flutter that reads like Compose.</text>
+    <text x="250" y="204" font-size="23" font-weight="500" fill="#6C7F9F">Compiler <tspan fill="#3E5170">·</tspan> runtime <tspan fill="#3E5170">·</tspan> language server <tspan fill="#3E5170">·</tspan> VS Code</text>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<!--
+  The .flx file icon: the Dart mark's silhouette in flx violet, because a .flx
+  file is a Dart file that has not been transpiled yet — sitting next to
+  main.dart in the explorer, it should read as the same family, different
+  language.
+
+  Two planes: the sail is drawn first, the wing over it, and the diagonal you
+  see between them is the wing's lower edge. The 7-unit stroke on each path is
+  what rounds the corners; it also grows the artwork by 3.5 units, which the
+  group transform allows for.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"
+     role="img" aria-label="flx file">
+  <g transform="translate(4,4) scale(0.938)" stroke-linejoin="round" stroke-width="7">
+    <path fill="#A78BFA" stroke="#A78BFA"
+          d="M 69 0 L 102 28 L 102 126 L 54 126 L 22 96 L 22 24 Z"/>
+    <path fill="#6D28D9" stroke="#6D28D9"
+          d="M 0 69 L 20 24 L 98 24 L 126 52 L 126 105 L 104 105 L 22 24 L 22 96 Z"/>
+  </g>
+</svg>

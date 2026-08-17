@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../../assets/flx-icon-128.png" width="88" alt="flx">
+</p>
+
 # interop
 
 Not an app. A compile target that proves flx composes with the ecosystem

@@ -1,0 +1,31 @@
+<!--
+  flx mark — the wordmark drawn as geometry, so it needs no font to render.
+  Master artwork: every PNG in this folder is a render of this file.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"
+     role="img" aria-label="flx">
+  <defs>
+    <linearGradient id="flxTile" x1="6" y1="0" x2="122" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2DD4E8"/>
+      <stop offset="0.5" stop-color="#4C6BF5"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <clipPath id="flxTileClip"><rect width="128" height="128" rx="30"/></clipPath>
+  </defs>
+
+  <rect width="128" height="128" rx="30" fill="url(#flxTile)"/>
+
+  <!-- the fold: a plane lifting from the lower left, a nod to Flutter -->
+  <g clip-path="url(#flxTileClip)">
+    <path d="M -8 136 L 136 40 L 136 136 Z" fill="#080C1A" opacity="0.14"/>
+  </g>
+
+  <g fill="none" stroke="#FFFFFF" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"
+     transform="translate(4,-1)">
+    <path d="M 50 32 C 40 25 32 31 32 45 L 32 92"/>
+    <path d="M 18 54 L 50 54"/>
+    <path d="M 62 32 L 62 92"/>
+    <path d="M 76 62 L 102 92"/>
+    <path d="M 102 62 L 76 92"/>
+  </g>
+</svg>

@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sonal-sithara/flx/main/assets/flx-icon-128.png"
+       width="96" alt="flx">
+</p>
+
 # flx — VS Code support
 
 Syntax highlighting plus a language server: diagnostics, completion, hover,

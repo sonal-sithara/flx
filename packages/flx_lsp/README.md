@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sonal-sithara/flx/main/assets/flx-icon-128.png"
+       width="88" alt="flx">
+</p>
+
 # flx_lsp
 
 Language server for [flx](https://github.com/sonal-sithara/flx). Speaks LSP over
