@@ -1,0 +1,27 @@
+// Several composables in one file: a page plus the components it uses.
+composable Badge(label, tone: Color = Colors.grey) {
+  Text(label, style: .caption)
+}
+
+composable EmptyState(title, subtitle) {
+  Column(gap: 4, center: true) {
+    Text(title, style: .subtitle)
+    Text(subtitle, style: .caption)
+  }
+}
+
+@page("/library/:shelf")
+composable LibraryScreen(shelf) {
+  val books = useState([])
+
+  Column(padding: 16, gap: 12, safeArea: true) {
+    Badge(shelf)
+    if (books.value.isEmpty) {
+      EmptyState("Nothing here", "Add a book to get started")
+    } else {
+      for (book in books.value) {
+        Text(book.title)
+      }
+    }
+  }
+}

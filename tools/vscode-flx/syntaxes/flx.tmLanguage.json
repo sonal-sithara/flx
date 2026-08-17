@@ -1,0 +1,144 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "flx",
+  "scopeName": "source.flx",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#annotations" },
+    { "include": "#declarations" },
+    { "include": "#keywords" },
+    { "include": "#hooks" },
+    { "include": "#layouts" },
+    { "include": "#widgets" },
+    { "include": "#shorthands" },
+    { "include": "#named-arguments" },
+    { "include": "#strings" },
+    { "include": "#numbers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.flx",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.flx",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "annotations": {
+      "name": "meta.annotation.flx",
+      "match": "(@)(page)\\b",
+      "captures": {
+        "1": { "name": "punctuation.definition.annotation.flx" },
+        "2": { "name": "storage.type.annotation.flx" }
+      }
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(composable)\\s+([A-Z][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.composable.flx" },
+            "2": { "name": "entity.name.type.composable.flx" }
+          }
+        },
+        {
+          "match": "\\b(val)\\s+([a-z_][A-Za-z0-9_$]*)",
+          "captures": {
+            "1": { "name": "storage.type.val.flx" },
+            "2": { "name": "variable.other.definition.flx" }
+          }
+        },
+        {
+          "name": "keyword.control.import.flx",
+          "match": "\\b(import)\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "name": "keyword.control.flx",
+      "match": "\\b(if|else|for|in)\\b"
+    },
+    "hooks": {
+      "name": "support.function.hook.flx",
+      "match": "\\b(use[A-Z][A-Za-z0-9_]*)\\b"
+    },
+    "layouts": {
+      "comment": "Layout widgets take a children block rather than a callback.",
+      "name": "support.class.layout.flx",
+      "match": "\\b(Column|Row|Stack|Wrap)\\b"
+    },
+    "widgets": {
+      "name": "support.class.widget.flx",
+      "match": "\\b([A-Z][A-Za-z0-9_]*)\\b"
+    },
+    "shorthands": {
+      "comment": "Enum shorthands such as `style: .title`.",
+      "name": "constant.language.shorthand.flx",
+      "match": "(?<=:)\\s*(\\.[a-z][A-Za-z0-9_]*)"
+    },
+    "named-arguments": {
+      "match": "\\b([a-z_][A-Za-z0-9_]*)\\s*(:)(?!:)",
+      "captures": {
+        "1": { "name": "variable.parameter.flx" },
+        "2": { "name": "punctuation.separator.flx" }
+      }
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.flx",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-body" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.flx",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "include": "#string-body" }
+          ]
+        }
+      ]
+    },
+    "string-body": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.flx",
+          "match": "\\\\."
+        },
+        {
+          "name": "meta.embedded.expression.flx",
+          "begin": "\\$\\{",
+          "end": "\\}",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.template-expression.begin.flx" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.template-expression.end.flx" }
+          },
+          "patterns": [
+            { "include": "#strings" },
+            { "include": "#numbers" },
+            { "include": "#hooks" }
+          ]
+        },
+        {
+          "name": "meta.embedded.expression.flx",
+          "match": "\\$[a-zA-Z_][a-zA-Z0-9_]*"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.flx",
+      "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+    }
+  }
+}

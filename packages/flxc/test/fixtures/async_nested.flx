@@ -1,0 +1,15 @@
+import "../data/api.dart"
+
+@page("/dashboard")
+composable DashboardScreen {
+  val repo  = useInject<Api>()
+  val user  = useFetch(repo.currentUser)
+  // A dependent fetch reads the AsyncValue (user$), not the unwrapped value —
+  // the unwrapped `user` does not exist until the widget tree below.
+  val stats = useFetch(repo.stats, keys: [user$.data?.id])
+
+  Column(padding: 24, gap: 16, main: .center, cross: .start) {
+    Text(user.name, style: .title)
+    Text("Visits: ${stats.visits}", style: .body)
+  }
+}

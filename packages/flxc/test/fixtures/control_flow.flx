@@ -1,0 +1,23 @@
+@page("/inbox")
+composable InboxScreen {
+  val messages = useState(["one", "two"])
+  val filter   = useState(0)
+
+  Column(padding: 16, gap: 8) {
+    Text("Inbox", style: .title)
+    if (filter.value == 0) {
+      Text("All", style: .caption)
+      Text("showing everything")
+    } else if (filter.value == 1) {
+      Text("Unread", style: .caption)
+    } else {
+      Text("Archived", style: .caption)
+    }
+    for (message in messages.value) {
+      Row(gap: 4) {
+        Text("• ")
+        Text(message)
+      }
+    }
+  }
+}

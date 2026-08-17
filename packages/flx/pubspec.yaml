@@ -1,0 +1,20 @@
+name: flx
+description: >-
+  The flx runtime: a hooks engine, fluent modifiers, layout extensions,
+  a router and a DI container for Flutter. Zero pub dependencies.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: '>=3.19.0'
+
+# Invariant: Flutter and nothing else. The runtime never takes a pub
+# dependency — that is the whole promise of the framework.
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

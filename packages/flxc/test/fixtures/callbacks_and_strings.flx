@@ -1,0 +1,18 @@
+@page("/editor")
+composable EditorScreen {
+  val text     = useTextEditingController()
+  val saved    = useState(false)
+  val labels   = useState({"title": "Untitled"})
+  val nav      = useNavigator()
+
+  Column(padding: 16, gap: 12) {
+    // Nested quotes inside an interpolation, and a raw string.
+    Text("Editing ${labels.value["title"]}", style: .title)
+    Text(r"escaped\path\stays\literal", style: .caption)
+    Text("Saved: ${saved.value ? 'yes' : 'no'}")
+    Button("Save") {
+      saved.value = true
+      nav.pop()
+    }
+  }
+}

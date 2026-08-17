@@ -1,81 +1,151 @@
-# flx — v6: control flow in widget trees
+# flx
 
-`.flx` DSL → `flxc` transpiler → Dart. Own hooks engine, own router, zero pub dependencies.
+A Compose/Next.js-style DSL for Flutter. You write `.flx`; `flxc` transpiles it
+to ordinary Dart. Built on stock Flutter — the SDK is never forked, and the
+runtime takes **zero pub dependencies**.
 
-## The full pipeline
+```
+composable Greeting(name) {
+  val count = useState(0)
+
+  Column(padding: 16, gap: 12, main: .center) {
+    Text("Hello ${name}", style: .title)
+    Text("Taps: ${count.value}")
+    Button("Tap me") {
+      count.value++
+    }
+  }
+}
+```
+
+## Layout
+
+| Path             | What it is                                              |
+| ---------------- | ------------------------------------------------------- |
+| `packages/flx`   | The runtime — hooks engine, router, DI, modifiers        |
+| `packages/flxc`  | The compiler — lexer, parser, codegen, CLI, watch mode   |
+| `example`        | A Flutter app exercising every DSL feature               |
+| `tools/vscode-flx` | Syntax highlighting for `.flx`                        |
+
+## Getting started
 
 ```bash
-node tools/flxc.js build lib/pages
-# → transpiles every .flx
-# → generates lib/pages/routes.g.dart from @page annotations
-flutter run
+make setup     # fetch deps for all three packages
+make build     # .flx -> .dart, and regenerate routes.g.dart
+make run       # build, then launch the example app
+make watch     # rebuild on every save
+make test      # 85 tests across compiler, runtime and app
 ```
 
-## Routing
+## The compiler
+
+`flxc` is a hand-written lexer → recursive-descent parser → code generator in
+pure Dart. It reports errors the way a compiler should:
 
 ```
-@page("/user/:id")
-composable UserScreen(id) {
-  ...
-  Text("User id: ${id}")
-}
+error: composable 'greeting' must start with a capital letter
+  --> lib/pages/settings.flx:1:12
+  |
+1 | composable greeting {
+  |            ^^^^^^^^
+  = hint: it becomes a Dart class, so name it 'Greeting'
 ```
 
-flxc generates the class with an `id` field AND registers it:
+```bash
+flxc build [dir]     # transpile + generate routes  (default: lib/pages)
+flxc watch [dir]     # rebuild on change, ~15ms, survives syntax errors
+flxc check [dir]     # transpile without writing — for CI
+flxc file.flx -o out.dart
+```
+
+Codegen is pinned by golden tests: `packages/flxc/test/fixtures/*.flx` each have
+a committed `.dart.golden`. Accept an intentional change with
+`UPDATE_GOLDENS=1 dart test`, then read the diff before committing it.
+
+## The DSL
+
+**Declarations.** A file holds any number of composables — a screen plus the
+components it is built from. `@page("/route")` makes one a screen: it is wrapped
+in a `Scaffold` and registered in the generated route table.
+
+**`val`.** All `val`s come before the widget tree. `val x = useFetch(...)` is
+special: it generates the `AsyncValue.when` loading/error wrapping, so `x` is
+the resolved value everywhere below.
+
+**Blocks.** A trailing `{ }` after `Column`/`Row`/`Stack`/`Wrap` is children;
+after any other widget it is a callback body. The rule is keyed off the widget
+name, so it never depends on type inference.
+
+**Control flow.** `if` / `else if` / `else` and `for (x in xs)` work inside any
+children block and compile to Dart's collection-if and collection-for, so a
+branch may contain several widgets.
+
+**Shorthands.** `style: .title` → `Styles.title`, `main: .center` →
+`MainAxisAlignment.center`. `padding:`, `background:`, `center:` and friends are
+lifted out of the layout call into a modifier chain.
+
+## The runtime
+
+A hooks engine in ~250 lines, same slot-cursor principle as React: hooks must be
+called in the same order every build.
+
+`useState` · `useRef` · `useMemoized` · `useEffect` · `useRebuild` ·
+`useListenable` · `useTextEditingController` · `useFocusNode` · `useFetch` ·
+`useInterval` · `useDebounced` · `useTheme` · `useNavigator` · `useMediaQuery` ·
+`useInject` · `useViewModel`
+
+Effects run **after the frame**, not during build — so `useEffect(() =>
+nav.push(...))` works instead of throwing.
+
+### Dependency injection
 
 ```dart
-final appRoutes = <RouteDef>[
-  RouteDef('/profile',  (params) => const ProfileScreen()),
-  RouteDef('/settings', (params) => const SettingsScreen()),
-  RouteDef('/user/:id', (params) => UserScreen(id: params['id'] ?? '')),
-];
+final injector = Injector()
+  ..singleton<UserRepository>((_) => UserRepository());
+
+runApp(FlxScope(injector: injector, child: const App()));
 ```
 
-Navigate two ways:
-- `nav.to(SettingsScreen())` — push a screen object
-- `nav.toPath("/user/42")` — push by URL through the route table
-
-Query params work too: `/user/42?tab=posts` → `params['tab']`.
-Unknown paths get a built-in 404 screen.
-
-## Deep links
-`main.dart` wires the table into `MaterialApp.onGenerateRoute` — the single entry
-point for pushNamed, web URLs, AND platform deep links. To finish deep linking:
-
-- **Android**: add an intent-filter for your domain in AndroidManifest.xml,
-  host `/.well-known/assetlinks.json` on your site
-- **iOS**: add Associated Domains capability, host
-  `/.well-known/apple-app-site-association`
-
-Then `https://yourapp.com/user/42` opens the app directly on UserScreen(id: '42') —
-the route table does the matching, no extra code.
-
-## Demo flow
-Profile (`/profile`) → "Settings" (object push) → back → "Open user 42" (path push
-through the router, proving deep-link matching works).
-
-## Honest status — what's NOT done yet
-- (DONE in v6: if/else + for in widget trees → Dart collection-if/for)
-- watch mode, IDE support (highlighting/LSP), Dart port of flxc
-- DI (`useInject<T>()`), transpiler test suite
-See CLAUDE.md for the prioritized task list — the repo is set up for Claude Code.
-
-## New in v6: control flow
-
 ```
-if (showTip.value) {
-  Text("Visible", style: .caption)
-} else {
-  Text("Hidden", style: .caption)
-}
-for (todo in todos.value) {
-  Text("• ${todo}")
-}
+val repo = useInject<UserRepository>()
+val vm   = useViewModel<TodosViewModel>()
 ```
 
-Generates Dart collection-if / collection-for (with spreads), so multiple
-children per branch work. `else if` chains are supported.
+Scopes nest and override, which is what lets a widget test swap a repository for
+a fake. See `example/test/app_test.dart`.
 
-DSL rule update: trailing { } after Column/Row/Stack/Wrap = children
-(widgets, if, for). After any other widget = callback. This is now
-deterministic by widget name.
+### Routing
+
+`@page` annotations generate `routes.g.dart`. Wire it into
+`MaterialApp.onGenerateRoute` — one entry point serving `pushNamed`, web URLs
+and platform deep links.
+
+```
+nav.to(SettingsScreen())   // push a screen object
+nav.toPath("/user/42")     // push by path through the route table
+```
+
+Query params merge into the param map; unknown paths get a built-in 404.
+
+To finish deep linking you still need the platform manifests: an Android
+intent-filter plus `/.well-known/assetlinks.json`, and the iOS Associated
+Domains capability plus `/.well-known/apple-app-site-association`.
+
+## Known limits
+
+- **Dependent fetches.** A `val` cannot read an earlier `useFetch`'s resolved
+  value, because hooks are positional and the value only exists inside the
+  `.when(data:)` closure. `flxc` rejects it at compile time and points you at
+  `name$.data`.
+- **Expressions are passed through.** Anything that isn't widget-tree structure
+  is handed to Dart verbatim — Dart remains the type checker. Errors in an
+  expression surface as Dart errors in the generated file.
+- **One root widget per composable**, and `if`/`for` cannot be that root.
+- **No language server yet** — highlighting only, no completion or inline
+  errors.
+
+## Status
+
+Production-solid for in-house use: 85 tests, real diagnostics, watch mode, a
+demo app that builds for web, iOS, Android and macOS. Not yet published to
+pub.dev, and not yet documented for outside contributors.

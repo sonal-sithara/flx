@@ -1,0 +1,35 @@
+{
+  "name": "flx",
+  "displayName": "flx",
+  "description": "Syntax highlighting for .flx files",
+  "version": "0.1.0",
+  "publisher": "flx",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "flx",
+        "aliases": [
+          "flx",
+          "Flx"
+        ],
+        "extensions": [
+          ".flx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "flx",
+        "scopeName": "source.flx",
+        "path": "./syntaxes/flx.tmLanguage.json"
+      }
+    ]
+  }
+}

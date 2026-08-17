@@ -5,9 +5,9 @@ build/
 pubspec.lock
 *.iml
 
-# flxc output — generated from .flx, never hand-edited
-*.g.dart
-!**/routes.g.dart.golden
+# flxc output IS committed, on purpose: the app then builds without running
+# the compiler first, and `make ci` can fail a tree whose .dart is stale
+# relative to its .flx. Never hand-edit those files.
 
 # IDE
 .idea/

@@ -1,0 +1,96 @@
+import 'dart:io';
+
+import 'package:flxc/src/compiler.dart';
+import 'package:flxc/src/diagnostics.dart';
+import 'package:flxc/src/source.dart';
+import 'package:flxc/src/watcher.dart';
+
+const _usage = '''
+flxc — the flx compiler
+
+Usage:
+  flxc build [dir]            Transpile every .flx under dir and write
+                              routes.g.dart  (default dir: lib/pages)
+  flxc watch [dir]            Same as build, then rebuild on every change
+  flxc check [dir]            Transpile without writing — for CI
+  flxc <file.flx> [-o out]    Transpile a single file
+
+Options:
+  --runtime <import>          Import used for the flx runtime
+                              (default: package:flx/flx.dart)
+  -h, --help                  Show this help
+''';
+
+Future<void> main(List<String> argv) async {
+  final args = List<String>.from(argv);
+
+  if (args.isEmpty || args.contains('-h') || args.contains('--help')) {
+    stdout.write(_usage);
+    return;
+  }
+
+  var runtimeImport = 'package:flx/flx.dart';
+  final runtimeIndex = args.indexOf('--runtime');
+  if (runtimeIndex >= 0) {
+    if (runtimeIndex + 1 >= args.length) {
+      _fail('--runtime needs a value, e.g. --runtime package:flx/flx.dart');
+    }
+    runtimeImport = args[runtimeIndex + 1];
+    args.removeRange(runtimeIndex, runtimeIndex + 2);
+  }
+
+  final compiler = Compiler(runtimeImport: runtimeImport);
+  final command = args.first;
+
+  try {
+    switch (command) {
+      case 'build':
+        _report(compiler.build(_dirArg(args), write: true));
+      case 'check':
+        _report(compiler.build(_dirArg(args), write: false), checked: true);
+      case 'watch':
+        await Watcher(_dirArg(args), compiler).run();
+      default:
+        if (!command.endsWith('.flx')) {
+          _fail("unknown command '$command'\n\n$_usage");
+        }
+        _compileOne(compiler, command, args);
+    }
+  } on FlxError catch (e) {
+    stderr.writeln(e.render());
+    exitCode = 1;
+  } on FileSystemException catch (e) {
+    stderr.writeln('flxc: ${e.message}${e.path == null ? '' : ' (${e.path})'}');
+    exitCode = 1;
+  }
+}
+
+String _dirArg(List<String> args) =>
+    args.length > 1 ? args[1] : 'lib/pages';
+
+void _compileOne(Compiler compiler, String input, List<String> args) {
+  final oIndex = args.indexOf('-o');
+  final output = oIndex >= 0 && oIndex + 1 < args.length
+      ? args[oIndex + 1]
+      : input.replaceAll(RegExp(r'\.flx$'), '.dart');
+
+  final source = Source(input, File(input).readAsStringSync());
+  File(output).writeAsStringSync(compiler.compileSource(source));
+  stdout.writeln('flxc: $input -> $output');
+}
+
+void _report(BuildResult result, {bool checked = false}) {
+  for (final f in result.files) {
+    stdout.writeln('flxc: ${f.input} -> ${f.output}');
+  }
+  final verb = checked ? 'checked' : 'generated';
+  stdout.writeln(
+    'flxc: $verb ${result.routesPath} '
+    '(${result.pageCount} route(s), ${result.composableCount} composable(s))',
+  );
+}
+
+Never _fail(String message) {
+  stderr.writeln('flxc: $message');
+  exit(1);
+}
